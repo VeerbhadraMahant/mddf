@@ -115,11 +115,11 @@ def build_model(model: ModelName, cfg: ModelCfg) -> Any:
 def build_engine(model: ModelName, cfg: ModelCfg, run_dir: Path, *, accelerator: str) -> Any:
     from anomalib.engine import Engine
 
+    # These are forwarded to the Lightning Trainer; `default_root_dir` / `logger`
+    # are explicit Engine params and must not go through kwargs.
     trainer_kw: dict[str, Any] = {
         "accelerator": accelerator,
         "devices": 1,
-        "default_root_dir": str(run_dir),
-        "logger": False,
         "enable_checkpointing": True,
     }
     if model == "patchcore":
@@ -129,8 +129,9 @@ def build_engine(model: ModelName, cfg: ModelCfg, run_dir: Path, *, accelerator:
         vci = cfg.trainer.get("val_check_interval")
         if vci:
             trainer_kw["val_check_interval"] = int(vci)
-    trainer_kw.update({k: v for k, v in cfg.trainer.items() if k in {"precision"}})
-    return Engine(**trainer_kw)
+    if "precision" in cfg.trainer:
+        trainer_kw["precision"] = cfg.trainer["precision"]
+    return Engine(default_root_dir=str(run_dir), logger=False, **trainer_kw)
 
 
 def _normalise_metrics(raw: dict[str, float]) -> dict[str, float]:
