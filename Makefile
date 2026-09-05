@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 PY ?= python
 
-.PHONY: help install install-train install-cuda lint typecheck test check serve data train export benchmark web docker publish-artifacts deploy-space
+.PHONY: help install install-train install-cuda lint typecheck test check serve data train export benchmark report web docker publish-artifacts deploy-space
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -43,8 +43,11 @@ train: ## Train models (M2/M3), e.g. make train ARGS="--model patchcore --catego
 export: ## Export ONNX artifacts + split backbone/memory bank (M4)
 	$(PY) -m mddf.cli export $(ARGS)
 
-benchmark: ## Accuracy + latency table (M3)
+benchmark: ## Accuracy + latency table -> docs/RESULTS.md
 	$(PY) -m mddf.cli benchmark $(ARGS)
+
+report: ## Operating-point analysis (recall vs false-alarm) from the ONNX models
+	$(PY) -m mddf.cli report $(ARGS)
 
 web: ## Build the React SPA into web/dist (M7)
 	cd web && npm ci && npm run build

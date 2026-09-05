@@ -1,38 +1,30 @@
 # Manufacturing Defect Detection System (MDDF)
 
+[![CI](https://github.com/VeerbhadraMahant/mddf/actions/workflows/ci.yml/badge.svg)](https://github.com/VeerbhadraMahant/mddf/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Runtime](https://img.shields.io/badge/serving-CPU--only%20%7C%20Torch--free-orange)
+
 Unsupervised visual quality inspection on the [MVTec AD](https://www.mvtec.com/company/research/datasets/mvtec-ad)
 dataset. Models are trained **only on defect-free images** — the realistic setting for a
 factory line, where defects are rare and their appearance is open-ended — and served
-**CPU-only** behind a FastAPI service with a React inspection UI.
+**CPU-only** (no PyTorch at runtime) behind a FastAPI service with a React inspection UI.
 
-Two methods are trained per category and benchmarked head-to-head:
+**A 3-method comparative study**, one model trained per category per method:
 
-| Model | Role | Backbone | Idea |
+| Method | Paradigm | Backbone | Idea |
 |---|---|---|---|
-| **PatchCore** | accuracy | WideResNet-50 | coreset memory bank of normal patch embeddings; anomaly = distance to nearest normal patch |
-| **EfficientAD** | latency | custom PDN | student–teacher + autoencoder distillation; designed for real-time edge inference |
+| **PaDiM** | distribution | ResNet-18 | per-patch multivariate Gaussian of normal features; anomaly = Mahalanobis distance |
+| **PatchCore** | memory bank | WideResNet-50 | coreset of normal patch embeddings; anomaly = distance to nearest normal patch |
+| **EfficientAD** | distillation | custom PDN | student–teacher + autoencoder disagreement; built for real-time edge inference |
 
-Both produce a **native pixel-level anomaly map**, upsampled and overlaid on the input
+All three emit a **native pixel-level anomaly map**, upsampled and overlaid on the input
 for operator-facing localization — no Grad-CAM (see [Design notes](#design-notes)).
+Metrics: image + pixel AUROC, **AUPRO** (region-overlap), F1, plus an
+[operating-point analysis](#operating-points) (recall vs. false-alarm trade-off) and
+CPU p50/p95 latency, fp32 and **INT8**.
 
----
-
-## Status
-
-| Milestone | Scope | State |
-|---|---|---|
-| M0 | Scaffold, config, CI, FastAPI skeleton | ✅ done |
-| M1 | MVTec AD download + verify, Anomalib datamodule | ✅ done |
-| M2 | PatchCore / EfficientAD training + eval pipeline | ✅ done |
-| M3 | Benchmark aggregation (accuracy vs baselines + CPU latency) | ✅ done |
-| M4 | ONNX export for Torch-free serving | ✅ done |
-| M5 | Torch-free inference core (ONNXRuntime + NumPy) | ✅ done |
-| M6 | FastAPI `predict` / `predict/batch` endpoints | ✅ done |
-| M7 | React SPA (Vite + Tailwind) | ✅ done |
-| M8 | Dockerfile + Hugging Face Space / model-repo deploy scripts | ✅ done |
-
-Training all 15 categories and the deployed URL are added once the MVTec AD
-download + training run completes; the pipeline and deploy path are in place.
+See [`docs/RESULTS.md`](docs/RESULTS.md) for the full measured table.
 
 ---
 
@@ -63,10 +55,11 @@ make train ARGS="--model patchcore --category leather"    # (M2)
 ```
    training  (local RTX 4060 · PyTorch + Anomalib · [train] extra)
    ────────────────────────────────────────────────────────────────
-   MVTec AD (good only) ─► PatchCore / EfficientAD  ─► Engine.fit + test
-                                                    ─► ONNX export  (Engine.export)
+   MVTec AD (good only) ─► PaDiM / PatchCore / EfficientAD ─► Engine.fit + test
+                                                    ─► ONNX export (+ optional INT8)
                                                     ─► artifacts/<model>/<category>/
-                                                         model.onnx · preprocess.json · metrics.json
+                                                         model.onnx · model.int8.onnx
+                                                         preprocess.json · metrics.json
                                         │
                     publish ────────────┘  huggingface.co/bhadra244131/mddf-artifacts
 
@@ -75,8 +68,18 @@ make train ARGS="--model patchcore --category leather"    # (M2)
    image ─► FastAPI ─► preprocess ─► ONNXRuntime (CPU, 1 thread)
                     ─► anomaly map + score ─► threshold ─► verdict
                     ─► JET overlay · binary mask · connected-component boxes ─► base64 PNG
-        React SPA ◄── JSON
+        React SPA ◄── JSON  (Inspect · Dashboard · Benchmark tabs)
 ```
+
+<a id="operating-points"></a>
+### Operating points
+
+AUROC ranks; a production line needs a threshold and its cost. `mddf report` runs
+each exported ONNX over its category's test split and reports, for target defect
+recalls (0.90 / 0.95 / 0.99 / 1.00) and the F1-optimal point: the threshold,
+precision, **false-alarm rate** (good parts wrongly rejected) and **miss rate**
+(defects passed) — the numbers a QA team actually signs off on. Output:
+`artifacts/report/OPERATING_POINTS.md`.
 
 ### Design notes
 
@@ -92,9 +95,13 @@ make train ARGS="--model patchcore --category leather"    # (M2)
 - **Weights out of the image.** `model.onnx` + JSON per category live in a Hugging Face
   *model* repo and are pulled lazily on first request, then disk- and LRU-cached in RAM
   (`MDDF_REGISTRY_CACHE_SIZE`, default 4). Cold start touches one category, not fifteen.
-- **Two models, one benchmark.** PatchCore for accuracy, EfficientAD for CPU latency;
-  `mddf benchmark` reports measured image AUROC against the published PatchCore baseline
-  plus pixel AUROC, AUPRO and p50/p95 CPU latency.
+- **Three methods, one benchmark.** PaDiM (distribution), PatchCore (memory bank),
+  EfficientAD (distillation) — `mddf benchmark` reports measured image AUROC against the
+  published PatchCore baseline plus pixel AUROC, AUPRO, F1 and p50/p95 CPU latency
+  (fp32 and INT8), regenerating `docs/RESULTS.md`.
+- **INT8 without calibration data.** `mddf export --quantize` runs ONNXRuntime
+  dynamic quantization; the service loads the INT8 graph when present
+  (`MDDF_PREFER_INT8`), and the accuracy delta is measured by re-scoring, not assumed.
 
 ---
 
@@ -118,16 +125,18 @@ request id — never a stack trace or HTML page.
 ## Deploy
 
 ```bash
-make train ARGS="--model all"     # train PatchCore + EfficientAD, 15 categories
-make export                       # -> artifacts/<model>/<category>/model.onnx
-make benchmark ARGS="--latency"   # -> artifacts/benchmark/{metrics,COMPARISON.md}
-make publish-artifacts            # push ONNX + JSON to the HF model repo
-make deploy-space                 # create/update the HF Docker Space (builds the image)
+make train ARGS="--model all"          # PaDiM + PatchCore + EfficientAD, 15 categories each
+make export ARGS="--quantize"          # -> artifacts/<model>/<category>/model{,.int8}.onnx
+make benchmark ARGS="--latency"        # -> docs/RESULTS.md + artifacts/benchmark/
+make report                            # -> artifacts/report/OPERATING_POINTS.md
+make publish-artifacts                 # push ONNX + JSON to the HF model repo
+make deploy-space                      # create/update the HF Docker Space (builds the image)
 ```
 
 The Docker image (`Dockerfile`) is a two-stage build: Node builds `web/dist`, then a
-`python:3.12-slim` stage installs only the runtime deps and runs
-`mddf serve` on port 7860. It runs the same locally (`make docker`) and on the Space.
+`python:3.12-slim` stage installs only the runtime deps and runs `mddf serve` on port
+7860. It runs the same locally (`make docker`), on the Space, and — tagged `v*` — is
+published to `ghcr.io/veerbhadramahant/mddf` by `.github/workflows/release.yml`.
 
 ---
 
@@ -135,14 +144,15 @@ The Docker image (`Dockerfile`) is a two-stage build: Node builds `web/dist`, th
 
 | Path | What |
 |---|---|
-| `src/mddf/config.py`, `catalog.py` | settings + the 15-category catalogue (`mddf/resources/categories.yaml`) |
-| `src/mddf/data/` | MVTec AD download/verify + Anomalib datamodule *(M1)* |
-| `src/mddf/training/` | `train` / `evaluate` / `export` — needs `[train]` extra *(M2–M4)* |
-| `src/mddf/inference/` | Torch-free registry, NumPy scoring, heatmaps *(M5)* |
-| `src/mddf/api/` | FastAPI app, routes, schemas, structured errors, middleware |
-| `src/mddf/benchmark/` | accuracy + latency reporting *(M3)* |
-| `web/` | React + Vite + Tailwind SPA *(M7)* |
-| `src/mddf/resources/` | `categories.yaml`, `patchcore.yaml`, `efficient_ad.yaml` |
+| `src/mddf/config.py`, `catalog.py` | settings + the 15-category catalogue (`mddf/resources/`) |
+| `src/mddf/data/` | MVTec AD download/verify + Anomalib datamodule |
+| `src/mddf/training/` | `train` / `export` (+ INT8) — needs the `[train]` extra |
+| `src/mddf/inference/` | Torch-free registry, ONNX session, scoring, heatmaps |
+| `src/mddf/benchmark/` | accuracy + latency aggregation, operating-point analysis |
+| `src/mddf/api/` | FastAPI app, routes, schemas, RFC 9457 errors, middleware |
+| `web/` | React + Vite + Tailwind SPA (Inspect / Dashboard / Benchmark) |
+| `deploy/` | HF model-repo + Space push scripts |
+| `docs/RESULTS.md` | regenerated benchmark table |
 
 ## License
 
