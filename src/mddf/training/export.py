@@ -66,9 +66,6 @@ def export_category(
     output_root: Path | None = None,
     force: bool = False,
 ) -> ExportResult:
-    from anomalib.deploy import ExportType
-    from anomalib.engine import Engine
-
     cfg = load_model_cfg(model)
     ckpt = art.checkpoint_path(model, category, root=output_root)
     if not ckpt.is_file():
@@ -80,6 +77,9 @@ def export_category(
     if onnx_dest.is_file() and not force:
         _log.info("skip_existing_export", model=model, category=category)
     else:
+        from anomalib.deploy import ExportType  # heavy; only needed for a real export
+        from anomalib.engine import Engine
+
         net = build_model(model, cfg)
         engine = Engine(logger=False, accelerator="cpu", devices=1)
         with tempfile.TemporaryDirectory() as tmp:
