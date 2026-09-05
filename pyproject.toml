@@ -109,3 +109,8 @@ markers = [
 [tool.coverage.run]
 source = ["src/mddf"]
 branch = true
+
+[tool.coverage.report]
+# GPU / ONNX-execution paths (train, export, report drivers) aren't exercised in CI.
+fail_under = 65
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError", "if __name__ == .__main__.:"]
