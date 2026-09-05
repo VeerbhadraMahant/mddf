@@ -99,9 +99,43 @@ def point_to_dict(p: OperatingPoint) -> dict[str, float | str]:
     return asdict(p)
 
 
+def _average_ranks(values: np.ndarray) -> np.ndarray:
+    """1-based ranks with ties resolved to the mean rank (like scipy rankdata)."""
+    order = np.argsort(values, kind="stable")
+    ranks = np.empty(len(values), dtype=np.float64)
+    ranks[order] = np.arange(1, len(values) + 1, dtype=np.float64)
+    sorted_vals = values[order]
+    i = 0
+    n = len(values)
+    while i < n:
+        j = i + 1
+        while j < n and sorted_vals[j] == sorted_vals[i]:
+            j += 1
+        if j - i > 1:
+            ranks[order[i:j]] = (i + 1 + j) / 2.0
+        i = j
+    return ranks
+
+
+def auroc(scores: np.ndarray | list[float], labels: np.ndarray | list[int]) -> float:
+    """Image-level ROC AUC via the rank statistic (Mann-Whitney U), tie-aware. sklearn-free."""
+    s = np.asarray(scores, dtype=np.float64)
+    y = np.asarray(labels, dtype=np.int64)
+    pos_mask = y == 1
+    n_pos = int(pos_mask.sum())
+    n_neg = int((~pos_mask).sum())
+    if n_pos == 0 or n_neg == 0:
+        return float("nan")
+    ranks = _average_ranks(s)
+    rank_sum_pos = float(ranks[pos_mask].sum())
+    u = rank_sum_pos - n_pos * (n_pos + 1) / 2.0
+    return float(u / (n_pos * n_neg))
+
+
 __all__ = [
     "DEFAULT_TARGET_RECALLS",
     "OperatingPoint",
+    "auroc",
     "operating_points",
     "point_to_dict",
 ]

@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 PY ?= python
 
-.PHONY: help install install-train install-cuda lint typecheck test check serve data train export benchmark report web docker publish-artifacts deploy-space
+.PHONY: help install install-train install-cuda lint typecheck test check serve data train export benchmark report verify web docker publish-artifacts deploy-space
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -48,6 +48,9 @@ benchmark: ## Accuracy + latency table -> docs/RESULTS.md
 
 report: ## Operating-point analysis (recall vs false-alarm) from the ONNX models
 	$(PY) -m mddf.cli report $(ARGS)
+
+verify: ## Parity gate: INT8 export must match fp32 image AUROC within tolerance
+	$(PY) -m mddf.cli verify $(ARGS)
 
 web: ## Build the React SPA into web/dist (M7)
 	cd web && npm ci && npm run build

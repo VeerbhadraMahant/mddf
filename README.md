@@ -129,6 +129,7 @@ make train ARGS="--model all"          # PaDiM + PatchCore + EfficientAD, 15 cat
 make export ARGS="--quantize"          # -> artifacts/<model>/<category>/model{,.int8}.onnx
 make benchmark ARGS="--latency"        # -> docs/RESULTS.md + artifacts/benchmark/
 make report                            # -> artifacts/report/OPERATING_POINTS.md
+make verify ARGS="--tolerance 0.01"    # gate: INT8 image AUROC within 0.01 of fp32, else exit 1
 make publish-artifacts                 # push ONNX + JSON to the HF model repo
 make deploy-space                      # create/update the HF Docker Space (builds the image)
 ```

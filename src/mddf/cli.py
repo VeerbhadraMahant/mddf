@@ -128,6 +128,25 @@ def _report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _verify(args: argparse.Namespace) -> int:
+    from mddf.benchmark.verify import verify_int8_parity
+    from mddf.logging import configure_logging
+
+    configure_logging(level="INFO", json=False)
+    doc = verify_int8_parity(tolerance=args.tolerance)
+    for r in doc["rows"]:
+        flag = "ok" if r["within_tolerance"] else "FAIL"
+        print(
+            f"{r['model']:<14} {r['category']:<14} "
+            f"fp32 {r['auroc_fp32']:.4f}  int8 {r['auroc_int8']:.4f}  "
+            f"Δ {r['delta']:+.4f}  {flag}"
+        )
+    if not doc["rows"]:
+        sys.stderr.write("No (fp32, int8) ONNX pairs found; run `mddf export --quantize`.\n")
+        return 1
+    return 0 if doc["passed"] else 1
+
+
 def _benchmark(args: argparse.Namespace) -> int:
     from mddf.benchmark.accuracy import aggregate, comparison_markdown
     from mddf.benchmark.latency import benchmark_all
@@ -208,6 +227,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     report.add_argument("--category", action="append", metavar="NAME")
     report.set_defaults(func=_report)
+
+    verify = sub.add_parser("verify", help="Gate: INT8 export must match fp32 AUROC within tol.")
+    verify.add_argument("--tolerance", type=float, default=0.01)
+    verify.set_defaults(func=_verify)
 
     export = sub.add_parser("export", help="Export ONNX artifacts for the trained models.")
     export.add_argument(
