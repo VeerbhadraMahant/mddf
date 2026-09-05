@@ -1,4 +1,4 @@
-export type ModelName = "patchcore" | "efficient_ad";
+export type ModelName = "padim" | "patchcore" | "efficient_ad";
 
 export interface CategoryMetrics {
   image_auroc: number | null;

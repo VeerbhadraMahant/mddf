@@ -8,8 +8,9 @@ import {
 import { ScoreGauge } from "./components/ScoreGauge";
 import { HeatmapView } from "./components/HeatmapView";
 import { BenchmarkTable } from "./components/BenchmarkTable";
+import { Dashboard } from "./components/Dashboard";
 
-type Tab = "inspect" | "benchmark";
+type Tab = "inspect" | "dashboard" | "benchmark";
 
 export function App() {
   const [tab, setTab] = useState<Tab>("inspect");
@@ -84,7 +85,7 @@ export function App() {
           defect-free images only, served CPU-only.
         </p>
         <nav className="mt-4 flex gap-1 rounded-lg bg-gray-900 p-1 text-sm">
-          {(["inspect", "benchmark"] as Tab[]).map((t) => (
+          {(["inspect", "dashboard", "benchmark"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -104,7 +105,9 @@ export function App() {
         </div>
       )}
 
-      {tab === "benchmark" ? (
+      {tab === "dashboard" ? (
+        <Dashboard />
+      ) : tab === "benchmark" ? (
         <section className="rounded-xl border border-gray-800 bg-gray-900/40 p-4">
           <BenchmarkTable />
         </section>
