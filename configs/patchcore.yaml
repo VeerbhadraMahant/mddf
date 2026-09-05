@@ -1,0 +1,29 @@
+# PatchCore training config (consumed by mddf.training.train at M2).
+# Values mirror the Anomalib PatchCore defaults used for the published MVTec AD
+# numbers, tuned only where the 8 GB RTX 4060 requires it.
+
+model:
+  name: patchcore
+  backbone: wide_resnet50_2
+  layers: [layer2, layer3]
+  pre_trained: true
+  coreset_sampling_ratio: 0.1
+  num_neighbors: 9
+
+data:
+  image_size: 256          # resize shorter side; center-crop to 224 happens in-pipeline
+  center_crop: 224
+  train_batch_size: 8      # fits 8 GB; PatchCore only does a forward pass
+  eval_batch_size: 8
+  num_workers: 4
+
+# PatchCore is fit in a single pass — no optimizer / epochs.
+trainer:
+  accelerator: gpu
+  devices: 1
+  precision: 32
+
+export:
+  # M4 splits this into a shared backbone.onnx + per-category memory_bank.npy
+  input_shape: [1, 3, 224, 224]
+  opset: 17

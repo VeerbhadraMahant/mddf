@@ -1,0 +1,88 @@
+# MVTec AD category catalogue.
+#
+# Shared by training (which categories to train, per-category overrides) and by the
+# inference service (which categories the API advertises). `kind` is informational
+# (texture vs. object). `train_good` / `test_total` are the published MVTec AD counts
+# and are used only for sanity-checking the downloaded dataset.
+#
+# `published_image_auroc` is the PatchCore image-level AUROC reported in the PatchCore
+# paper (Roth et al., 2022) and is used as the baseline the benchmark compares against.
+
+dataset: mvtec_ad
+
+categories:
+  - name: bottle
+    kind: object
+    train_good: 209
+    test_total: 83
+    published_image_auroc: 1.000
+  - name: cable
+    kind: object
+    train_good: 224
+    test_total: 150
+    published_image_auroc: 0.995
+  - name: capsule
+    kind: object
+    train_good: 219
+    test_total: 132
+    published_image_auroc: 0.980
+  - name: carpet
+    kind: texture
+    train_good: 280
+    test_total: 117
+    published_image_auroc: 0.987
+  - name: grid
+    kind: texture
+    train_good: 264
+    test_total: 78
+    published_image_auroc: 0.981
+  - name: hazelnut
+    kind: object
+    train_good: 391
+    test_total: 110
+    published_image_auroc: 1.000
+  - name: leather
+    kind: texture
+    train_good: 245
+    test_total: 124
+    published_image_auroc: 1.000
+  - name: metal_nut
+    kind: object
+    train_good: 220
+    test_total: 115
+    published_image_auroc: 0.996
+  - name: pill
+    kind: object
+    train_good: 267
+    test_total: 167
+    published_image_auroc: 0.979
+  - name: screw
+    kind: object
+    train_good: 320
+    test_total: 160
+    published_image_auroc: 0.987
+  - name: tile
+    kind: texture
+    train_good: 230
+    test_total: 117
+    published_image_auroc: 0.994
+  - name: toothbrush
+    kind: object
+    train_good: 60
+    test_total: 42
+    published_image_auroc: 1.000
+  - name: transistor
+    kind: object
+    train_good: 213
+    test_total: 100
+    published_image_auroc: 1.000
+  - name: wood
+    kind: texture
+    train_good: 247
+    test_total: 79
+    published_image_auroc: 0.992
+  - name: zipper
+    kind: object
+    train_good: 240
+    test_total: 151
+    published_image_auroc: 0.985

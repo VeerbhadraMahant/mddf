@@ -1,0 +1,32 @@
+# Keep the build context small. NOTE: web/dist and src/ must NOT be excluded — the
+# image needs the built SPA and the package source.
+.git
+.github
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+htmlcov
+coverage.xml
+
+# Training-only material — never needed in the runtime image.
+datasets/
+artifacts/
+outputs/
+lightning_logs/
+results/
+notebooks/
+*.ckpt
+
+# Frontend sources (only web/dist is copied in)
+web/node_modules
+web/.vite
+
+# Docs / meta
+docs/
+*.md
+!README.md

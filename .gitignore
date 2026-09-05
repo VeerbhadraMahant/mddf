@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.env
+.env.local
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Project data & artifacts (mirrored to a Hugging Face model repo, not git)
+datasets/
+artifacts/
+outputs/
+lightning_logs/
+results/
+*.ckpt
+*.onnx
+*.npy
+!tests/**/*.npy
+
+# Node / frontend
+web/node_modules/
+web/dist/
+web/.vite/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

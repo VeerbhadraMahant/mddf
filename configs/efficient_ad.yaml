@@ -1,0 +1,32 @@
+# EfficientAD training config (consumed by mddf.training.train at M3).
+# `train_steps` is deliberately below the paper's ~70k: at MVTec AD scale the
+# accuracy cost is small and it keeps all 15 categories inside a single overnight
+# run on one RTX 4060. Bump back toward 70000 if a category underperforms.
+
+model:
+  name: efficient_ad
+  model_size: small        # EfficientAD-S; 'medium' if VRAM allows
+  teacher_out_channels: 384
+  pad_maps: true
+
+data:
+  image_size: 256
+  train_batch_size: 1      # EfficientAD trains with batch size 1 by design
+  eval_batch_size: 16
+  num_workers: 4
+
+trainer:
+  accelerator: gpu
+  devices: 1
+  precision: 32
+  max_steps: 24000         # was 70000 in the paper
+  check_val_every_n_epoch: null
+  val_check_interval: 4000
+
+optim:
+  lr: 0.0001
+  weight_decay: 0.00001
+
+export:
+  input_shape: [1, 3, 256, 256]
+  opset: 17
