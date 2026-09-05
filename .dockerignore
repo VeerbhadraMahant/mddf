@@ -22,9 +22,10 @@ results/
 notebooks/
 *.ckpt
 
-# Frontend sources (only web/dist is copied in)
+# Frontend: the image rebuilds the SPA in the node stage
 web/node_modules
 web/.vite
+web/dist
 
 # Docs / meta
 docs/

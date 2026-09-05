@@ -1,4 +1,4 @@
-"""MVTec AD category catalogue loaded from ``configs/categories.yaml``.
+"""MVTec AD category catalogue loaded from ``mddf/resources/categories.yaml``.
 
 Both the training pipeline and the inference service import from here so they can
 never disagree about which categories exist or what their published baselines are.

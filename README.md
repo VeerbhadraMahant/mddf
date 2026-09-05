@@ -29,11 +29,10 @@ for operator-facing localization — no Grad-CAM (see [Design notes](#design-not
 | M5 | Torch-free inference core (ONNXRuntime + NumPy) | ✅ done |
 | M6 | FastAPI `predict` / `predict/batch` endpoints | ✅ done |
 | M7 | React SPA (Vite + Tailwind) | ✅ done |
-| M8 | Docker + Hugging Face Space deploy | ⬜ |
+| M8 | Dockerfile + Hugging Face Space / model-repo deploy scripts | ✅ done |
 
-Training runs (all 15 categories) and the deployed URL are filled in as M7/M8 land.
-
-Results table (image AUROC vs. published PatchCore baseline) lands at M3.
+Training all 15 categories and the deployed URL are added once the MVTec AD
+download + training run completes; the pipeline and deploy path are in place.
 
 ---
 
@@ -62,37 +61,40 @@ make train ARGS="--model patchcore --category leather"    # (M2)
 ## Architecture
 
 ```
-                 ┌── training (local RTX 4060, PyTorch + Anomalib) ──┐
- MVTec AD  ─────► │  PatchCore / EfficientAD  ──►  ONNX export        │
- (good only)      │                               ├─ backbone.onnx (shared, ~100 MB)
-                 │                               └─ <category>/memory_bank.npy (~6 MB)
-                 └──────────────────────────┬───────────────────────┘
-                                            ▼   published to a Hugging Face model repo
-             ┌── serving (free CPU HF Space, Torch-free) ──────────────┐
- image  ───► │ FastAPI ─► preprocess ─► ONNXRuntime backbone           │
-             │           ─► NumPy nearest-neighbour scoring            │
-             │           ─► anomaly map ─► heatmap / mask / bboxes     │
-             │  React SPA  ◄── JSON + base64 PNG overlays              │
-             └───────────────────────────────────────────────────────┘
+   training  (local RTX 4060 · PyTorch + Anomalib · [train] extra)
+   ────────────────────────────────────────────────────────────────
+   MVTec AD (good only) ─► PatchCore / EfficientAD  ─► Engine.fit + test
+                                                    ─► ONNX export  (Engine.export)
+                                                    ─► artifacts/<model>/<category>/
+                                                         model.onnx · preprocess.json · metrics.json
+                                        │
+                    publish ────────────┘  huggingface.co/bhadra244131/mddf-artifacts
+
+   serving  (free CPU Hugging Face Docker Space · Torch-free · ~800 MB image)
+   ────────────────────────────────────────────────────────────────
+   image ─► FastAPI ─► preprocess ─► ONNXRuntime (CPU, 1 thread)
+                    ─► anomaly map + score ─► threshold ─► verdict
+                    ─► JET overlay · binary mask · connected-component boxes ─► base64 PNG
+        React SPA ◄── JSON
 ```
 
 ### Design notes
 
 - **No Grad-CAM.** Grad-CAM needs a trained classifier with class logits to backprop.
-  PatchCore has neither; it already yields a pixel-level anomaly map from patch-to-
-  memory-bank distances. That map *is* the localization output. Grad-CAM here would be
-  a decorative wrapper around a signal we already have — so it was cut, and EfficientNet
-  with it.
-- **Decoupled artifacts.** Exporting each category as a self-contained ONNX bakes the
-  270 MB backbone in 15× → ~4 GB, which will not fit a free Space. Instead: one shared
-  `backbone.onnx` + 15 small `memory_bank.npy` files, with nearest-neighbour scoring
-  done in NumPy at request time. Total ≈ 190 MB. A parity test (M4) asserts the split
-  reproduces Anomalib's own AUROC within 1e-3.
-- **Torch-free runtime.** Inference is ONNXRuntime + NumPy, so the deployed image ships
-  no PyTorch (~800 MB vs. ~4 GB). Training dependencies are an opt-in `[train]` extra.
-- **Lazy, LRU-cached model loading.** Artifacts are pulled per-category from the HF
-  model repo on first use and cached on disk + in RAM, so cold start touches one
-  category, not fifteen.
+  PatchCore has neither; it already emits a pixel-level anomaly map from patch-to-
+  memory-bank distances, and EfficientAD emits one from student–teacher disagreement.
+  That map *is* the localization output — Grad-CAM would be a decorative wrapper around
+  a signal we already have, so it was cut (and the unused EfficientNet with it).
+- **Torch-free runtime.** Serving is ONNXRuntime + NumPy + OpenCV(headless); the
+  deployed image ships no PyTorch or Anomalib (~800 MB vs. ~4 GB). Training deps are an
+  opt-in `[train]` extra, and the ONNX export bakes resize + normalise + post-processing
+  into the graph so preprocessing can't drift between train and serve.
+- **Weights out of the image.** `model.onnx` + JSON per category live in a Hugging Face
+  *model* repo and are pulled lazily on first request, then disk- and LRU-cached in RAM
+  (`MDDF_REGISTRY_CACHE_SIZE`, default 4). Cold start touches one category, not fifteen.
+- **Two models, one benchmark.** PatchCore for accuracy, EfficientAD for CPU latency;
+  `mddf benchmark` reports measured image AUROC against the published PatchCore baseline
+  plus pixel AUROC, AUPRO and p50/p95 CPU latency.
 
 ---
 
@@ -113,18 +115,34 @@ request id — never a stack trace or HTML page.
 
 ---
 
+## Deploy
+
+```bash
+make train ARGS="--model all"     # train PatchCore + EfficientAD, 15 categories
+make export                       # -> artifacts/<model>/<category>/model.onnx
+make benchmark ARGS="--latency"   # -> artifacts/benchmark/{metrics,COMPARISON.md}
+make publish-artifacts            # push ONNX + JSON to the HF model repo
+make deploy-space                 # create/update the HF Docker Space (builds the image)
+```
+
+The Docker image (`Dockerfile`) is a two-stage build: Node builds `web/dist`, then a
+`python:3.12-slim` stage installs only the runtime deps and runs
+`mddf serve` on port 7860. It runs the same locally (`make docker`) and on the Space.
+
+---
+
 ## Repository layout
 
 | Path | What |
 |---|---|
-| `src/mddf/config.py`, `catalog.py` | settings + the 15-category catalogue (`configs/categories.yaml`) |
+| `src/mddf/config.py`, `catalog.py` | settings + the 15-category catalogue (`mddf/resources/categories.yaml`) |
 | `src/mddf/data/` | MVTec AD download/verify + Anomalib datamodule *(M1)* |
 | `src/mddf/training/` | `train` / `evaluate` / `export` — needs `[train]` extra *(M2–M4)* |
 | `src/mddf/inference/` | Torch-free registry, NumPy scoring, heatmaps *(M5)* |
 | `src/mddf/api/` | FastAPI app, routes, schemas, structured errors, middleware |
 | `src/mddf/benchmark/` | accuracy + latency reporting *(M3)* |
 | `web/` | React + Vite + Tailwind SPA *(M7)* |
-| `configs/` | `categories.yaml`, `patchcore.yaml`, `efficient_ad.yaml` |
+| `src/mddf/resources/` | `categories.yaml`, `patchcore.yaml`, `efficient_ad.yaml` |
 
 ## License
 

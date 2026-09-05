@@ -1,21 +1,24 @@
 """Centralised configuration.
 
 Runtime settings come from environment variables (prefix ``MDDF_``) or a local
-``.env`` file. The dataset/model catalogue is read from ``configs/categories.yaml``
-so training and serving agree on the exact set of categories and their metadata.
+``.env`` file. The dataset/model catalogue and per-model configs ship inside the
+package (``mddf/resources/``) so training and serving — checkout or wheel — agree
+on the exact set of categories and hyper-parameters.
 """
 
 from __future__ import annotations
 
 import tomllib
 from functools import lru_cache
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CONFIGS_DIR = REPO_ROOT / "configs"
+# Bundled with the package so it resolves the same in a checkout and in a wheel.
+CONFIGS_DIR = Path(__file__).resolve().parent / "resources"
 
 ModelName = Literal["patchcore", "efficient_ad"]
 
@@ -51,7 +54,7 @@ class Settings(BaseSettings):
 
     # --- Artifacts ---
     artifacts_dir: Path = REPO_ROOT / "artifacts"
-    hf_model_repo: str = "veerbhadra/mddf-artifacts"
+    hf_model_repo: str = "bhadra244131/mddf-artifacts"
     hf_revision: str = "main"
     prefetch_on_startup: bool = False
 
@@ -68,12 +71,16 @@ def get_settings() -> Settings:
 
 @lru_cache
 def project_version() -> str:
-    """Read the package version from pyproject.toml (single source of truth)."""
+    """Package version: installed metadata first, else pyproject.toml in a checkout."""
+    try:
+        return version("mddf")
+    except PackageNotFoundError:
+        pass
     pyproject = REPO_ROOT / "pyproject.toml"
     data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-    version = data["project"]["version"]
-    assert isinstance(version, str)
-    return version
+    v = data["project"]["version"]
+    assert isinstance(v, str)
+    return v
 
 
 # Re-exported for convenience.

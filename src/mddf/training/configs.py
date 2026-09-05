@@ -1,4 +1,4 @@
-"""Typed loaders for ``configs/patchcore.yaml`` and ``configs/efficient_ad.yaml``.
+"""Typed loaders for ``mddf/resources/patchcore.yaml`` and ``efficient_ad.yaml``.
 
 Shared by the data pipeline (image / batch sizes) and by training / export
 (M2-M4). Kept deliberately small — only the fields the pipeline actually reads are
