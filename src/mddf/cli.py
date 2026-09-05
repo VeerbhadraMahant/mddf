@@ -1,9 +1,9 @@
 """``mddf`` command-line entrypoint.
 
-Only the ``serve`` and ``version`` subcommands work with the base (Torch-free)
-install. ``data``/``train``/``export``/``benchmark`` need the ``train`` extra and are
-wired in the corresponding milestones; they lazy-import so this module stays
-importable in the deployed image.
+``serve`` and ``data`` need only the base install plus (for ``data``) the ``train``
+extra. ``train``/``export``/``benchmark`` are wired in later milestones. Heavy
+imports are done inside the handlers so this module stays importable in the
+Torch-free deployment image.
 """
 
 from __future__ import annotations
@@ -28,6 +28,29 @@ def _serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _data(args: argparse.Namespace) -> int:
+    from mddf.catalog import load_catalog
+    from mddf.data.download import ensure_categories
+    from mddf.logging import configure_logging
+
+    configure_logging(level="INFO", json=False)
+    categories = args.category or load_catalog().names
+    try:
+        status = ensure_categories(categories)
+    except RuntimeError as exc:
+        sys.stderr.write(f"{exc}\n")
+        return 1
+
+    print(f"\nMVTec AD ready at {status.root}")
+    print(f"{'category':<14} {'train/good':>10} {'test':>6} {'defects':>8}  status")
+    for c in status.categories:
+        print(
+            f"{c.name:<14} {c.train_good:>10} {c.test_total:>6} "
+            f"{len(c.defect_types):>8}  {'ok' if c.ok else '; '.join(c.issues)}"
+        )
+    return 0
+
+
 def _not_yet(name: str) -> int:
     sys.stderr.write(
         f"`mddf {name}` is added in a later milestone. Install the training extra with "
@@ -47,8 +70,16 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--reload", action="store_true")
     serve.set_defaults(func=_serve)
 
+    data = sub.add_parser("data", help="Download and verify the MVTec AD dataset.")
+    data.add_argument(
+        "--category",
+        action="append",
+        metavar="NAME",
+        help="Restrict to one category (repeatable). Default: all 15.",
+    )
+    data.set_defaults(func=_data)
+
     for name, helptext in [
-        ("data", "Download and verify the MVTec AD dataset."),
         ("train", "Train PatchCore / EfficientAD for one or more categories."),
         ("export", "Export ONNX artifacts and split the backbone / memory bank."),
         ("benchmark", "Compute the accuracy + latency comparison table."),

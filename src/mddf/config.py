@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     input_size: int = 256
     registry_cache_size: int = 4  # model artifact sets kept warm in RAM
 
+    # --- Data (training only) ---
+    dataset_root: Path = REPO_ROOT / "datasets"
+
     # --- Artifacts ---
     artifacts_dir: Path = REPO_ROOT / "artifacts"
     hf_model_repo: str = "veerbhadra/mddf-artifacts"

@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 PY ?= python
 
-.PHONY: help install install-train lint typecheck test check serve data train export benchmark web docker
+.PHONY: help install install-train install-cuda lint typecheck test check serve data train export benchmark web docker
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -11,6 +11,13 @@ install: ## Install runtime + dev deps (Torch-free)
 
 install-train: ## Install everything incl. Torch/Anomalib (for local GPU training)
 	$(PY) -m pip install -e ".[train,dev]"
+	@echo "PyPI ships CPU-only torch. For NVIDIA GPUs, overlay the CUDA build:"
+	@echo "  $(PY) -m pip install --index-url https://download.pytorch.org/whl/cu126 \\"
+	@echo "        torch==2.14.0+cu126 torchvision==0.29.0+cu126"
+
+install-cuda: ## Overlay the CUDA 12.6 torch build (run after install-train, needs an NVIDIA GPU)
+	$(PY) -m pip install --index-url https://download.pytorch.org/whl/cu126 \
+		"torch==2.14.0+cu126" "torchvision==0.29.0+cu126"
 
 lint: ## ruff
 	ruff check src tests

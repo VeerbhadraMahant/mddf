@@ -46,10 +46,14 @@ make serve                            # http://127.0.0.1:7860/api/docs
 Local training needs an NVIDIA GPU and the heavier stack:
 
 ```bash
-python -m pip install -e ".[train,dev]"   # + PyTorch, Anomalib, Lightning
-make data                                  # download MVTec AD  (M1)
-make train ARGS="--model patchcore --category leather"   # (M2)
+python -m pip install -e ".[train,dev]"                  # + PyTorch, Anomalib, Lightning
+make install-cuda                                         # overlay the CUDA 12.6 torch build
+make data                                                 # download + verify MVTec AD  (M1)
+make train ARGS="--model patchcore --category leather"    # (M2)
 ```
+
+> PyPI's `torch` is CPU-only; `make install-cuda` replaces it with `torch==2.14.0+cu126`
+> from the PyTorch index. Verified against an RTX 4060 (8 GB, Ada / sm_89).
 
 ---
 

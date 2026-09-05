@@ -7,7 +7,7 @@ name = "mddf"
 version = "0.1.0"
 description = "Manufacturing Defect Detection — unsupervised visual anomaly detection (PatchCore + EfficientAD) served CPU-only via FastAPI."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [{ name = "Veerbhadra" }]
 keywords = ["anomaly-detection", "patchcore", "efficientad", "mvtec", "manufacturing", "fastapi"]
@@ -63,7 +63,7 @@ packages = ["src/mddf"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -74,7 +74,7 @@ ignore = ["B008"]  # FastAPI Depends() in defaults
 "tests/**" = ["S101"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 packages = ["mddf"]
 mypy_path = "src"
 strict = true
@@ -83,7 +83,7 @@ disallow_untyped_decorators = false
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["cv2.*", "anomalib.*", "onnxruntime.*", "huggingface_hub.*"]
+module = ["cv2.*", "anomalib.*", "onnxruntime.*", "huggingface_hub.*", "torchvision.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
