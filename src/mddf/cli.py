@@ -51,6 +51,41 @@ def _data(args: argparse.Namespace) -> int:
     return 0
 
 
+def _train(args: argparse.Namespace) -> int:
+    from mddf.logging import configure_logging
+    from mddf.training.run import ALL_MODELS, train_matrix
+
+    configure_logging(level="INFO", json=False)
+    models = list(ALL_MODELS) if args.model == "all" else [args.model]
+    try:
+        outcome = train_matrix(
+            models,
+            args.category,
+            accelerator=args.accelerator,
+            force=args.force,
+        )
+    except ValueError as exc:
+        sys.stderr.write(f"{exc}\n")
+        return 1
+
+    cols = (
+        f"{'model':<14} {'category':<14} {'img AUROC':>10} "
+        f"{'pix AUROC':>10} {'AUPRO':>8} {'sec':>7}"
+    )
+    print(f"\n{cols}")
+    for r in outcome.results:
+        print(
+            f"{r.model:<14} {r.category:<14} "
+            f"{r.metrics.get('image_auroc', float('nan')):>10.4f} "
+            f"{r.metrics.get('pixel_auroc', float('nan')):>10.4f} "
+            f"{r.metrics.get('aupro', float('nan')):>8.4f} "
+            f"{r.seconds:>7.0f}"
+        )
+    for model, category, err in outcome.failures:
+        sys.stderr.write(f"FAILED {model}/{category}: {err}\n")
+    return 0 if outcome.ok else 1
+
+
 def _not_yet(name: str) -> int:
     sys.stderr.write(
         f"`mddf {name}` is added in a later milestone. Install the training extra with "
@@ -79,9 +114,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     data.set_defaults(func=_data)
 
+    train = sub.add_parser("train", help="Train PatchCore / EfficientAD per category.")
+    train.add_argument(
+        "--model",
+        choices=["patchcore", "efficient_ad", "all"],
+        default="patchcore",
+    )
+    train.add_argument(
+        "--category",
+        action="append",
+        metavar="NAME",
+        help="Restrict to one category (repeatable). Default: all 15.",
+    )
+    train.add_argument("--accelerator", default="auto", help="auto | gpu | cpu")
+    train.add_argument("--force", action="store_true", help="Retrain even if artifacts exist.")
+    train.set_defaults(func=_train)
+
     for name, helptext in [
-        ("train", "Train PatchCore / EfficientAD for one or more categories."),
-        ("export", "Export ONNX artifacts and split the backbone / memory bank."),
+        ("export", "Export ONNX artifacts for the trained models."),
         ("benchmark", "Compute the accuracy + latency comparison table."),
     ]:
         p = sub.add_parser(name, help=helptext)
