@@ -28,7 +28,7 @@ for operator-facing localization — no Grad-CAM (see [Design notes](#design-not
 | M4 | ONNX export for Torch-free serving | ✅ done |
 | M5 | Torch-free inference core (ONNXRuntime + NumPy) | ✅ done |
 | M6 | FastAPI `predict` / `predict/batch` endpoints | ✅ done |
-| M7 | React SPA | ⬜ |
+| M7 | React SPA (Vite + Tailwind) | ✅ done |
 | M8 | Docker + Hugging Face Space deploy | ⬜ |
 
 Training runs (all 15 categories) and the deployed URL are filled in as M7/M8 land.

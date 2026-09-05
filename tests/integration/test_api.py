@@ -85,10 +85,16 @@ def test_unknown_route_returns_problem_json(client: TestClient) -> None:
     assert "type" in body and "title" in body
 
 
-def test_root_redirects_to_docs_without_spa(client: TestClient) -> None:
+def test_root_serves_spa_or_redirects(client: TestClient) -> None:
+    from mddf.api.main import SPA_DIR
+
     r = client.get("/", follow_redirects=False)
-    assert r.status_code in (307, 308)
-    assert r.headers["location"].endswith("/api/docs")
+    if SPA_DIR.is_dir():
+        assert r.status_code == 200
+        assert "text/html" in r.headers["content-type"]
+    else:
+        assert r.status_code in (307, 308)
+        assert r.headers["location"].endswith("/api/docs")
 
 
 # --- predict -----------------------------------------------------------------
