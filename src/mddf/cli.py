@@ -86,6 +86,30 @@ def _train(args: argparse.Namespace) -> int:
     return 0 if outcome.ok else 1
 
 
+def _benchmark(args: argparse.Namespace) -> int:
+    from mddf.benchmark.accuracy import aggregate, comparison_markdown
+    from mddf.benchmark.latency import benchmark_all
+    from mddf.config import get_settings
+    from mddf.logging import configure_logging
+    from mddf.training import artifacts as art
+    from mddf.training.run import ALL_MODELS
+
+    configure_logging(level="INFO", json=False)
+    models = list(ALL_MODELS)
+    if args.latency:
+        benchmark_all(models, runs=args.runs)
+    doc = aggregate(models)
+    md = comparison_markdown()
+
+    out_dir = get_settings().artifacts_dir / "benchmark"
+    art.write_json(out_dir / "metrics.json", doc)
+    (out_dir / "COMPARISON.md").write_text(md + "\n", encoding="utf-8")
+    print(md)
+    n = sum(len(v) for v in doc["results"].values())
+    print(f"\n{n} (model, category) results -> {out_dir / 'metrics.json'}")
+    return 0 if doc["results"] else 1
+
+
 def _not_yet(name: str) -> int:
     sys.stderr.write(
         f"`mddf {name}` is added in a later milestone. Install the training extra with "
@@ -130,12 +154,13 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument("--force", action="store_true", help="Retrain even if artifacts exist.")
     train.set_defaults(func=_train)
 
-    for name, helptext in [
-        ("export", "Export ONNX artifacts for the trained models."),
-        ("benchmark", "Compute the accuracy + latency comparison table."),
-    ]:
-        p = sub.add_parser(name, help=helptext)
-        p.set_defaults(func=lambda _a, _n=name: _not_yet(_n))
+    bench = sub.add_parser("benchmark", help="Aggregate the accuracy + latency comparison table.")
+    bench.add_argument("--latency", action="store_true", help="Also time the ONNX models on CPU.")
+    bench.add_argument("--runs", type=int, default=50, help="Latency iterations per model.")
+    bench.set_defaults(func=_benchmark)
+
+    export = sub.add_parser("export", help="Export ONNX artifacts for the trained models.")
+    export.set_defaults(func=lambda _a: _not_yet("export"))
 
     return parser
 
