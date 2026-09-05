@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
+  CLIENT_MODE,
   type CategoryInfo,
   type ModelName,
   type PredictResponse,
@@ -81,9 +82,16 @@ export function App() {
       <header className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-100">Manufacturing Defect Detection</h1>
         <p className="mt-1 text-sm text-gray-400">
-          Unsupervised visual inspection on MVTec AD — PatchCore &amp; EfficientAD, trained on
-          defect-free images only, served CPU-only.
+          Unsupervised visual inspection on MVTec AD — PaDiM · PatchCore · EfficientAD, trained on
+          defect-free images only.
         </p>
+        {CLIENT_MODE && (
+          <p className="mt-2 inline-block rounded-md bg-cyan-950/60 px-2 py-1 text-xs text-cyan-300">
+            Static demo — the PaDiM model runs <strong>in your browser</strong> via
+            onnxruntime-web (WASM); the ONNX + metrics are fetched from the Hugging Face model
+            repo. First run per category downloads a ~45&nbsp;MB model.
+          </p>
+        )}
         <nav className="mt-4 flex gap-1 rounded-lg bg-gray-900 p-1 text-sm">
           {(["inspect", "dashboard", "benchmark"] as Tab[]).map((t) => (
             <button
@@ -228,15 +236,23 @@ export function App() {
       )}
 
       <footer className="mt-10 text-center text-xs text-gray-600">
-        <a href="/api/docs" className="hover:text-gray-400">
-          API docs
+        {!CLIENT_MODE && (
+          <>
+            <a href="/api/docs" className="hover:text-gray-400">
+              API docs
+            </a>
+            {" · "}
+          </>
+        )}
+        <a href="https://github.com/VeerbhadraMahant/mddf" className="hover:text-gray-400">
+          source
         </a>
         {" · "}
         <a
-          href="https://github.com/VeerbhadraMahant/mddf"
+          href="https://huggingface.co/bhadra244131/mddf-artifacts"
           className="hover:text-gray-400"
         >
-          source
+          models
         </a>
       </footer>
     </div>

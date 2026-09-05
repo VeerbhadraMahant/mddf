@@ -24,7 +24,14 @@ Metrics: image + pixel AUROC, **AUPRO** (region-overlap), F1, plus an
 [operating-point analysis](#operating-points) (recall vs. false-alarm trade-off) and
 CPU p50/p95 latency, fp32 and **INT8**.
 
-See [`docs/RESULTS.md`](docs/RESULTS.md) for the full measured table.
+**Live demo:** https://veerbhadramahant.github.io/mddf/ — the PaDiM model runs entirely
+in your browser (onnxruntime-web / WASM); weights + metrics stream from the
+[Hugging Face model repo](https://huggingface.co/bhadra244131/mddf-artifacts). No server.
+Container image: `docker run -p 7860:7860 ghcr.io/veerbhadramahant/mddf` (full FastAPI
+service + all three models).
+
+See [`docs/RESULTS.md`](docs/RESULTS.md) for the full measured table and
+[`MODEL_CARD.md`](MODEL_CARD.md) for scope and limitations.
 
 ---
 
@@ -124,20 +131,30 @@ request id — never a stack trace or HTML page.
 
 ## Deploy
 
+Build → export → measure → publish:
+
 ```bash
 make train ARGS="--model all"          # PaDiM + PatchCore + EfficientAD, 15 categories each
 make export ARGS="--quantize"          # -> artifacts/<model>/<category>/model{,.int8}.onnx
 make benchmark ARGS="--latency"        # -> docs/RESULTS.md + artifacts/benchmark/
 make report                            # -> artifacts/report/OPERATING_POINTS.md
 make verify ARGS="--tolerance 0.01"    # gate: INT8 image AUROC within 0.01 of fp32, else exit 1
-make publish-artifacts                 # push ONNX + JSON to the HF model repo
-make deploy-space                      # create/update the HF Docker Space (builds the image)
+make publish-artifacts                 # push INT8 ONNX + JSON to the HF model repo
 ```
 
-The Docker image (`Dockerfile`) is a two-stage build: Node builds `web/dist`, then a
-`python:3.12-slim` stage installs only the runtime deps and runs `mddf serve` on port
-7860. It runs the same locally (`make docker`), on the Space, and — tagged `v*` — is
-published to `ghcr.io/veerbhadramahant/mddf` by `.github/workflows/release.yml`.
+Two zero-cost delivery paths (HF Spaces now needs a paid plan for Docker/Gradio, so
+it isn't used):
+
+- **Static demo → GitHub Pages.** `.github/workflows/pages.yml` builds the SPA with
+  `VITE_INFERENCE=client` and deploys it. Inference runs in the browser via
+  onnxruntime-web (WASM, in a Web Worker); the INT8 ONNX + `benchmark/metrics.json`
+  are fetched from the HF model repo. No backend, no cold start.
+- **Container → GHCR.** `.github/workflows/release.yml` builds the two-stage image
+  (Node builds `web/dist`; `python:3.12-slim` installs only the Torch-free runtime and
+  runs `mddf serve` on 7860) and pushes `ghcr.io/veerbhadramahant/mddf` on a `v*` tag.
+  `docker run -p 7860:7860 ghcr.io/veerbhadramahant/mddf` gives the full FastAPI
+  service; point any free container host (Render / Koyeb / Cloud Run) at that image
+  for a hosted backend URL.
 
 ---
 

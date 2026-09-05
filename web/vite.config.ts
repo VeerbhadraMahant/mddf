@@ -2,8 +2,11 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-// Built into web/dist and served by the FastAPI app at "/".
+// Served two ways:
+//  - by the FastAPI app at "/" (default base "/")
+//  - as a static GitHub Pages site (VITE_BASE=/mddf/, VITE_INFERENCE=client)
 export default defineConfig({
+  base: process.env.VITE_BASE || "/",
   plugins: [react(), tailwindcss()],
   build: { outDir: "dist", emptyOutDir: true },
   server: {

@@ -159,6 +159,9 @@ def build_engine(
         "accelerator": accelerator,
         "devices": 1,
         "enable_checkpointing": True,
+        # The rich progress bar defines an unpicklable nested class; disabling it
+        # keeps DataLoader-worker spawn (Windows) happy and the logs clean.
+        "enable_progress_bar": False,
     }
     if model in ("patchcore", "padim"):
         trainer_kw["max_epochs"] = 1
