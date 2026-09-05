@@ -69,7 +69,7 @@ def unsupported_media_type(content_type: str | None, allowed: tuple[str, ...]) -
 
 def payload_too_large(limit_bytes: int) -> ApiError:
     return ApiError(
-        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        status_code=status.HTTP_413_CONTENT_TOO_LARGE,
         slug="payload-too-large",
         detail=f"Uploaded image exceeds the {limit_bytes} byte limit.",
     )

@@ -22,14 +22,16 @@ for operator-facing localization — no Grad-CAM (see [Design notes](#design-not
 | Milestone | Scope | State |
 |---|---|---|
 | M0 | Scaffold, config, CI, FastAPI skeleton | ✅ done |
-| M1 | MVTec AD download + verify, Anomalib datamodule | ⬜ |
-| M2 | PatchCore training + eval, 15 categories | ⬜ |
-| M3 | EfficientAD training + eval, comparison table | ⬜ |
-| M4 | ONNX export + backbone / memory-bank split + parity check | ⬜ |
-| M5 | Torch-free inference core (ONNXRuntime + NumPy) | ⬜ |
-| M6 | FastAPI `predict` / `benchmark` endpoints | ⬜ |
+| M1 | MVTec AD download + verify, Anomalib datamodule | ✅ done |
+| M2 | PatchCore / EfficientAD training + eval pipeline | ✅ done |
+| M3 | Benchmark aggregation (accuracy vs baselines + CPU latency) | ✅ done |
+| M4 | ONNX export for Torch-free serving | ✅ done |
+| M5 | Torch-free inference core (ONNXRuntime + NumPy) | ✅ done |
+| M6 | FastAPI `predict` / `predict/batch` endpoints | ✅ done |
 | M7 | React SPA | ⬜ |
 | M8 | Docker + Hugging Face Space deploy | ⬜ |
+
+Training runs (all 15 categories) and the deployed URL are filled in as M7/M8 land.
 
 Results table (image AUROC vs. published PatchCore baseline) lands at M3.
 

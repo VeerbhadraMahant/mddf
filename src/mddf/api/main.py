@@ -20,7 +20,7 @@ from starlette.staticfiles import StaticFiles
 
 from mddf.api.errors import install_error_handlers
 from mddf.api.middleware import ObservabilityMiddleware
-from mddf.api.routes import health, meta
+from mddf.api.routes import health, meta, predict
 from mddf.config import REPO_ROOT, get_settings, project_version
 from mddf.logging import configure_logging, get_logger
 
@@ -34,9 +34,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging(level=settings.log_level, json=settings.log_json)
     log = get_logger("mddf.startup")
     log.info("starting", version=project_version(), spa=SPA_DIR.is_dir())
-    if settings.prefetch_on_startup:
-        # M6: warm the inference registry here.
-        log.info("prefetch_on_startup set but registry not yet wired (pre-M6)")
+
+    from mddf.inference.registry import get_registry
+
+    try:
+        available = get_registry().available()
+        log.info("models_available", count=len(available))
+        if settings.prefetch_on_startup and available:
+            get_registry().warmup(available[: settings.registry_cache_size])
+    except Exception:  # startup must not crash on artifact issues
+        log.exception("registry_probe_failed")
+
     yield
     log.info("shutdown")
 
@@ -63,6 +71,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router, prefix=API_PREFIX)
     app.include_router(meta.router, prefix=API_PREFIX)
+    app.include_router(predict.router, prefix=API_PREFIX)
 
     @app.get("/metrics", include_in_schema=False)
     async def metrics() -> Response:

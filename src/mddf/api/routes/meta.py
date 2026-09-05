@@ -15,6 +15,7 @@ from mddf.api.schemas import (
 )
 from mddf.catalog import load_catalog
 from mddf.config import ModelName
+from mddf.inference.registry import get_registry
 from mddf.reporting import generated_at, results_by_category
 
 router = APIRouter(tags=["catalogue"])
@@ -26,6 +27,10 @@ _ALL_MODELS: tuple[ModelName, ...] = ("patchcore", "efficient_ad")
 async def categories() -> CategoriesResponse:
     catalog = load_catalog()
     results = results_by_category()
+    try:
+        exported = set(get_registry().available())
+    except Exception:  # metadata endpoint must not 500 on artifact issues
+        exported = set()
 
     infos: list[CategoryInfo] = []
     for category in catalog.categories:
@@ -42,11 +47,12 @@ async def categories() -> CategoriesResponse:
                 f1_max=m.get("f1_max"),
                 published_image_auroc=category.published_image_auroc,
             )
+        available = [m for m in _ALL_MODELS if (m, category.name) in exported] or list(metrics)
         infos.append(
             CategoryInfo(
                 name=category.name,
                 kind=category.kind,
-                available_models=list(metrics.keys()),
+                available_models=available,
                 metrics=metrics,
             )
         )
