@@ -154,7 +154,7 @@ def build_parser() -> argparse.ArgumentParser:
     train = sub.add_parser("train", help="Train PatchCore / EfficientAD per category.")
     train.add_argument(
         "--model",
-        choices=["patchcore", "efficient_ad", "all"],
+        choices=["padim", "patchcore", "efficient_ad", "all"],
         default="patchcore",
     )
     train.add_argument(
@@ -173,7 +173,9 @@ def build_parser() -> argparse.ArgumentParser:
     bench.set_defaults(func=_benchmark)
 
     export = sub.add_parser("export", help="Export ONNX artifacts for the trained models.")
-    export.add_argument("--model", choices=["patchcore", "efficient_ad", "all"], default="all")
+    export.add_argument(
+        "--model", choices=["padim", "patchcore", "efficient_ad", "all"], default="all"
+    )
     export.add_argument("--category", action="append", metavar="NAME")
     export.add_argument("--force", action="store_true")
     export.set_defaults(func=_export)
@@ -181,7 +183,17 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _force_utf8_stdio() -> None:
+    # Anomalib / Lightning emit non-ASCII (emoji, box-drawing); a cp1252 Windows
+    # console would raise UnicodeEncodeError mid-run.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    _force_utf8_stdio()
     parser = build_parser()
     args = parser.parse_args(argv)
     return int(args.func(args))

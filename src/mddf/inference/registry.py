@@ -14,7 +14,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 
-from mddf.config import ModelName, Settings, get_settings
+from mddf.config import ALL_MODELS, ModelName, Settings, get_settings
 from mddf.inference.onnx_session import OnnxModel
 from mddf.inference.threshold import ThresholdModel
 from mddf.inference.threshold import build as build_threshold
@@ -145,9 +145,8 @@ class Registry:
     def available(self) -> list[tuple[ModelName, str]]:
         from mddf.catalog import load_catalog
 
-        models: tuple[ModelName, ...] = ("patchcore", "efficient_ad")
         out: list[tuple[ModelName, str]] = []
-        for model in models:
+        for model in ALL_MODELS:
             for cat in load_catalog().names:
                 if art.onnx_path(model, cat, root=self._settings.artifacts_dir).is_file():
                     out.append((model, cat))

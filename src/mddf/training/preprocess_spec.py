@@ -28,6 +28,14 @@ class PreprocessSpec(BaseModel):
         return self.center_crop or self.image_size
 
 
+def padim_spec(image_size: int = 256) -> PreprocessSpec:
+    return PreprocessSpec(
+        image_size=(image_size, image_size),
+        center_crop=None,
+        normalize=True,
+    )
+
+
 def patchcore_spec(image_size: int = 256, center_crop: int = 224) -> PreprocessSpec:
     return PreprocessSpec(
         image_size=(image_size, image_size),
@@ -50,5 +58,6 @@ __all__ = [
     "IMAGENET_STD",
     "PreprocessSpec",
     "efficient_ad_spec",
+    "padim_spec",
     "patchcore_spec",
 ]

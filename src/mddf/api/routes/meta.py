@@ -14,13 +14,13 @@ from mddf.api.schemas import (
     CategoryMetrics,
 )
 from mddf.catalog import load_catalog
-from mddf.config import ModelName
+from mddf.config import ALL_MODELS, ModelName
 from mddf.inference.registry import get_registry
 from mddf.reporting import generated_at, results_by_category
 
 router = APIRouter(tags=["catalogue"])
 
-_ALL_MODELS: tuple[ModelName, ...] = ("patchcore", "efficient_ad")
+_ALL_MODELS = ALL_MODELS
 
 
 @router.get("/categories", response_model=CategoriesResponse)

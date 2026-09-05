@@ -20,7 +20,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # Bundled with the package so it resolves the same in a checkout and in a wheel.
 CONFIGS_DIR = Path(__file__).resolve().parent / "resources"
 
-ModelName = Literal["patchcore", "efficient_ad"]
+ModelName = Literal["padim", "patchcore", "efficient_ad"]
+# Ordered weakest→strongest baseline for tables: distribution / memory-bank / distillation.
+ALL_MODELS: tuple[ModelName, ...] = ("padim", "patchcore", "efficient_ad")
 
 
 class Settings(BaseSettings):

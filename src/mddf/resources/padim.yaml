@@ -1,0 +1,28 @@
+# PaDiM training config (consumed by mddf.training.train).
+# PaDiM = per-patch multivariate Gaussian of pretrained CNN features; the
+# distribution-based baseline in the 3-method study (vs memory-bank PatchCore and
+# distillation-based EfficientAD). resnet18 keeps the covariance memory small and
+# trains in ~1 minute per category on CPU or GPU.
+
+model:
+  name: padim
+  backbone: resnet18
+  layers: [layer1, layer2, layer3]
+  pre_trained: true
+  n_features: 100        # random feature subset (paper uses 100 for resnet18)
+
+data:
+  image_size: 256
+  center_crop: null
+  train_batch_size: 32
+  eval_batch_size: 32
+  num_workers: 4
+
+trainer:
+  accelerator: gpu
+  devices: 1
+  precision: 32
+
+export:
+  input_shape: [1, 3, 256, 256]
+  opset: 17

@@ -27,6 +27,7 @@ from mddf.training.configs import ModelCfg, load_model_cfg
 from mddf.training.preprocess_spec import (
     PreprocessSpec,
     efficient_ad_spec,
+    padim_spec,
     patchcore_spec,
 )
 
@@ -78,18 +79,36 @@ def preprocess_spec_for(model: ModelName, cfg: ModelCfg) -> PreprocessSpec:
     if model == "patchcore":
         crop = cfg.data.center_crop or 224
         return patchcore_spec(cfg.data.image_size, crop)
+    if model == "padim":
+        return padim_spec(cfg.data.image_size)
     return efficient_ad_spec(cfg.data.image_size)
 
 
+def _build_evaluator() -> Any:
+    """Test metrics: image + pixel AUROC, pixel AUPRO (the MVTec localization
+    metric), image F1. ``strict=False`` so a category without masks still runs."""
+    from anomalib.metrics import AUPRO, AUROC, Evaluator, F1Score
+
+    test_metrics = [
+        AUROC(fields=["pred_score", "gt_label"], prefix="image_", strict=False),
+        AUROC(fields=["anomaly_map", "gt_mask"], prefix="pixel_", strict=False),
+        AUPRO(fields=["anomaly_map", "gt_mask"], prefix="pixel_", strict=False),
+        F1Score(fields=["pred_label", "gt_label"], prefix="image_", strict=False),
+    ]
+    return Evaluator(test_metrics=test_metrics, compute_on_cpu=True)
+
+
 def build_model(model: ModelName, cfg: ModelCfg) -> Any:
-    from anomalib.models import EfficientAd, Patchcore
+    from anomalib.models import EfficientAd, Padim, Patchcore
 
     spec = preprocess_spec_for(model, cfg)
+    m = cfg.model
+    evaluator = _build_evaluator()
+
     if model == "patchcore":
         pre = Patchcore.configure_pre_processor(
             image_size=spec.image_size, center_crop_size=spec.center_crop
         )
-        m = cfg.model
         return Patchcore(
             backbone=m.get("backbone", "wide_resnet50_2"),
             layers=tuple(m.get("layers", ["layer2", "layer3"])),
@@ -97,10 +116,21 @@ def build_model(model: ModelName, cfg: ModelCfg) -> Any:
             coreset_sampling_ratio=m.get("coreset_sampling_ratio", 0.1),
             num_neighbors=m.get("num_neighbors", 9),
             pre_processor=pre,
+            evaluator=evaluator,
+        )
+
+    if model == "padim":
+        pre = Padim.configure_pre_processor(image_size=spec.image_size)
+        return Padim(
+            backbone=m.get("backbone", "resnet18"),
+            layers=list(m.get("layers", ["layer1", "layer2", "layer3"])),
+            pre_trained=m.get("pre_trained", True),
+            n_features=m.get("n_features"),
+            pre_processor=pre,
+            evaluator=evaluator,
         )
 
     pre = EfficientAd.configure_pre_processor(image_size=spec.image_size)
-    m = cfg.model
     o = cfg.optim
     return EfficientAd(
         teacher_out_channels=m.get("teacher_out_channels", 384),
@@ -109,6 +139,7 @@ def build_model(model: ModelName, cfg: ModelCfg) -> Any:
         lr=o.get("lr", 1e-4),
         weight_decay=o.get("weight_decay", 1e-5),
         pre_processor=pre,
+        evaluator=evaluator,
     )
 
 
@@ -122,7 +153,7 @@ def build_engine(model: ModelName, cfg: ModelCfg, run_dir: Path, *, accelerator:
         "devices": 1,
         "enable_checkpointing": True,
     }
-    if model == "patchcore":
+    if model in ("patchcore", "padim"):
         trainer_kw["max_epochs"] = 1
     else:
         trainer_kw["max_steps"] = int(cfg.trainer.get("max_steps", 24000))

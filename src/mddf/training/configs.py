@@ -42,6 +42,7 @@ class ModelCfg(BaseModel):
 
 
 _CONFIG_FILES: dict[ModelName, str] = {
+    "padim": "padim.yaml",
     "patchcore": "patchcore.yaml",
     "efficient_ad": "efficient_ad.yaml",
 }

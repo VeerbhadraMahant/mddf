@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from mddf.catalog import load_catalog
-from mddf.config import ModelName, get_settings
+from mddf.config import ALL_MODELS, ModelName, get_settings
 from mddf.training import artifacts as art
 
 _METRIC_KEYS = ("image_auroc", "pixel_auroc", "aupro", "f1_max")
@@ -76,7 +76,7 @@ def aggregate(
 
 def comparison_markdown(root: Path | None = None) -> str:
     catalog = load_catalog()
-    doc = aggregate(["patchcore", "efficient_ad"], root=root, write=False)
+    doc = aggregate(list(ALL_MODELS), root=root, write=False)
     results: dict[str, Any] = doc["results"]
 
     lines = [

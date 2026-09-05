@@ -6,13 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from mddf.catalog import load_catalog
-from mddf.config import ModelName
+from mddf.config import ALL_MODELS, ModelName
 from mddf.logging import get_logger
 from mddf.training.train import TrainResult, train_category
 
 _log = get_logger("mddf.training.run")
-
-ALL_MODELS: tuple[ModelName, ...] = ("patchcore", "efficient_ad")
 
 
 @dataclass

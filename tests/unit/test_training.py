@@ -46,6 +46,18 @@ def test_preprocess_specs() -> None:
 def test_preprocess_spec_for_reads_config() -> None:
     assert preprocess_spec_for("patchcore", load_model_cfg("patchcore")).center_crop == (224, 224)
     assert preprocess_spec_for("efficient_ad", load_model_cfg("efficient_ad")).center_crop is None
+    padim = preprocess_spec_for("padim", load_model_cfg("padim"))
+    assert padim.center_crop is None and padim.normalize is True
+
+
+def test_all_three_models_have_configs() -> None:
+    from mddf.config import ALL_MODELS
+
+    assert ALL_MODELS == ("padim", "patchcore", "efficient_ad")
+    for model in ALL_MODELS:
+        cfg = load_model_cfg(model)
+        assert cfg.name == model
+        assert cfg.data.image_size > 0
 
 
 def test_resolve_categories_validates() -> None:
