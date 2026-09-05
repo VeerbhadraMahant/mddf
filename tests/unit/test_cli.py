@@ -54,5 +54,5 @@ def test_version_flag(capsys: pytest.CaptureFixture[str]) -> None:
     assert "mddf" in capsys.readouterr().out
 
 
-def test_train_stub_still_guarded() -> None:
-    assert cli.main(["export"]) == 2
+def test_export_rejects_unknown_category() -> None:
+    assert cli.main(["export", "--model", "patchcore", "--category", "bogus"]) == 1

@@ -1,9 +1,8 @@
 """``mddf`` command-line entrypoint.
 
-``serve`` and ``data`` need only the base install plus (for ``data``) the ``train``
-extra. ``train``/``export``/``benchmark`` are wired in later milestones. Heavy
-imports are done inside the handlers so this module stays importable in the
-Torch-free deployment image.
+``serve`` runs on the base (Torch-free) install. ``data`` / ``train`` / ``export`` /
+``benchmark`` need the ``train`` extra. Heavy imports live inside each handler so
+this module stays importable in the deployment image.
 """
 
 from __future__ import annotations
@@ -86,6 +85,28 @@ def _train(args: argparse.Namespace) -> int:
     return 0 if outcome.ok else 1
 
 
+def _export(args: argparse.Namespace) -> int:
+    from mddf.logging import configure_logging
+    from mddf.training.export import export_matrix
+    from mddf.training.run import ALL_MODELS, resolve_categories
+
+    configure_logging(level="INFO", json=False)
+    models = list(ALL_MODELS) if args.model == "all" else [args.model]
+    try:
+        categories = resolve_categories(args.category)
+    except ValueError as exc:
+        sys.stderr.write(f"{exc}\n")
+        return 1
+
+    results, failures = export_matrix(models, categories, force=args.force)
+    for r in results:
+        mb = r.onnx.stat().st_size / 1e6
+        print(f"{r.model:<14} {r.category:<14} {mb:>7.1f} MB  {r.output_names}")
+    for model, category, err in failures:
+        sys.stderr.write(f"FAILED {model}/{category}: {err}\n")
+    return 0 if not failures and results else 1
+
+
 def _benchmark(args: argparse.Namespace) -> int:
     from mddf.benchmark.accuracy import aggregate, comparison_markdown
     from mddf.benchmark.latency import benchmark_all
@@ -108,14 +129,6 @@ def _benchmark(args: argparse.Namespace) -> int:
     n = sum(len(v) for v in doc["results"].values())
     print(f"\n{n} (model, category) results -> {out_dir / 'metrics.json'}")
     return 0 if doc["results"] else 1
-
-
-def _not_yet(name: str) -> int:
-    sys.stderr.write(
-        f"`mddf {name}` is added in a later milestone. Install the training extra with "
-        f"`pip install -e .[train]` first.\n"
-    )
-    return 2
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -160,7 +173,10 @@ def build_parser() -> argparse.ArgumentParser:
     bench.set_defaults(func=_benchmark)
 
     export = sub.add_parser("export", help="Export ONNX artifacts for the trained models.")
-    export.set_defaults(func=lambda _a: _not_yet("export"))
+    export.add_argument("--model", choices=["patchcore", "efficient_ad", "all"], default="all")
+    export.add_argument("--category", action="append", metavar="NAME")
+    export.add_argument("--force", action="store_true")
+    export.set_defaults(func=_export)
 
     return parser
 
