@@ -41,6 +41,7 @@ def train_matrix(
     output_root: Path | None = None,
     accelerator: str = "auto",
     force: bool = False,
+    max_steps: int | None = None,
 ) -> MatrixOutcome:
     cats = resolve_categories(categories)
     results: list[TrainResult] = []
@@ -57,6 +58,7 @@ def train_matrix(
                         output_root=output_root,
                         accelerator=accelerator,
                         force=force,
+                        max_steps=max_steps,
                     )
                 )
             except Exception as exc:  # keep going; one bad category shouldn't sink the run

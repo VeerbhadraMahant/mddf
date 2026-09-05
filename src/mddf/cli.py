@@ -62,6 +62,7 @@ def _train(args: argparse.Namespace) -> int:
             args.category,
             accelerator=args.accelerator,
             force=args.force,
+            max_steps=args.max_steps,
         )
     except ValueError as exc:
         sys.stderr.write(f"{exc}\n")
@@ -215,6 +216,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     train.add_argument("--accelerator", default="auto", help="auto | gpu | cpu")
     train.add_argument("--force", action="store_true", help="Retrain even if artifacts exist.")
+    train.add_argument(
+        "--max-steps", type=int, default=None, help="Override the EfficientAD step budget."
+    )
     train.set_defaults(func=_train)
 
     bench = sub.add_parser("benchmark", help="Aggregate the accuracy + latency comparison table.")

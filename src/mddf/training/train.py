@@ -143,7 +143,14 @@ def build_model(model: ModelName, cfg: ModelCfg) -> Any:
     )
 
 
-def build_engine(model: ModelName, cfg: ModelCfg, run_dir: Path, *, accelerator: str) -> Any:
+def build_engine(
+    model: ModelName,
+    cfg: ModelCfg,
+    run_dir: Path,
+    *,
+    accelerator: str,
+    max_steps: int | None = None,
+) -> Any:
     from anomalib.engine import Engine
 
     # These are forwarded to the Lightning Trainer; `default_root_dir` / `logger`
@@ -156,10 +163,15 @@ def build_engine(model: ModelName, cfg: ModelCfg, run_dir: Path, *, accelerator:
     if model in ("patchcore", "padim"):
         trainer_kw["max_epochs"] = 1
     else:
-        trainer_kw["max_steps"] = int(cfg.trainer.get("max_steps", 24000))
+        trainer_kw["max_steps"] = int(
+            max_steps if max_steps is not None else cfg.trainer.get("max_steps", 24000)
+        )
+        # EfficientAD uses batch size 1, so an epoch is only a few hundred batches;
+        # an int val_check_interval would have to be smaller than that. Only honour
+        # a float in (0, 1] (fraction of an epoch); otherwise validate per epoch.
         vci = cfg.trainer.get("val_check_interval")
-        if vci:
-            trainer_kw["val_check_interval"] = int(vci)
+        if isinstance(vci, float) and 0.0 < vci <= 1.0:
+            trainer_kw["val_check_interval"] = vci
     if "precision" in cfg.trainer:
         trainer_kw["precision"] = cfg.trainer["precision"]
     return Engine(default_root_dir=str(run_dir), logger=False, **trainer_kw)
@@ -195,6 +207,7 @@ def train_category(
     output_root: Path | None = None,
     accelerator: str = "auto",
     force: bool = False,
+    max_steps: int | None = None,
 ) -> TrainResult:
     cfg = load_model_cfg(model)
     ckpt_dest = art.checkpoint_path(model, category, root=output_root)
@@ -221,7 +234,7 @@ def train_category(
 
     datamodule = build_datamodule(category, model, root=dataset_root)
     net = build_model(model, cfg)
-    engine = build_engine(model, cfg, run_dir, accelerator=accelerator)
+    engine = build_engine(model, cfg, run_dir, accelerator=accelerator, max_steps=max_steps)
 
     _log.info("fit_start", model=model, category=category)
     start = time.perf_counter()
