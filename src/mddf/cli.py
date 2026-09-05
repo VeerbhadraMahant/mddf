@@ -107,6 +107,26 @@ def _export(args: argparse.Namespace) -> int:
     return 0 if not failures and results else 1
 
 
+def _report(args: argparse.Namespace) -> int:
+    from mddf.benchmark.report import build_report
+    from mddf.logging import configure_logging
+    from mddf.training.run import resolve_categories
+
+    configure_logging(level="INFO", json=False)
+    try:
+        categories = resolve_categories(args.category)
+    except ValueError as exc:
+        sys.stderr.write(f"{exc}\n")
+        return 1
+    doc = build_report(categories=categories)
+    n = sum(len(v) for v in doc["results"].values())
+    if not n:
+        sys.stderr.write("No exported models found; run `mddf export` first.\n")
+        return 1
+    print(f"{n} (model, category) operating-point sets -> artifacts/report/")
+    return 0
+
+
 def _benchmark(args: argparse.Namespace) -> int:
     from mddf.benchmark.accuracy import aggregate, comparison_markdown
     from mddf.benchmark.latency import benchmark_all
@@ -171,6 +191,12 @@ def build_parser() -> argparse.ArgumentParser:
     bench.add_argument("--latency", action="store_true", help="Also time the ONNX models on CPU.")
     bench.add_argument("--runs", type=int, default=50, help="Latency iterations per model.")
     bench.set_defaults(func=_benchmark)
+
+    report = sub.add_parser(
+        "report", help="Operating-point analysis (recall / false-alarm trade-off) from ONNX."
+    )
+    report.add_argument("--category", action="append", metavar="NAME")
+    report.set_defaults(func=_report)
 
     export = sub.add_parser("export", help="Export ONNX artifacts for the trained models.")
     export.add_argument(
