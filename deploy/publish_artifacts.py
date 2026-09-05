@@ -20,7 +20,14 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from mddf.config import get_settings  # noqa: E402
 
-ALLOW = ("*/*/model.onnx", "*/*/preprocess.json", "*/*/metrics.json", "benchmark/*")
+ALLOW = (
+    "*/*/model.onnx",
+    "*/*/model.int8.onnx",
+    "*/*/preprocess.json",
+    "*/*/metrics.json",
+    "benchmark/*",
+    "report/*",
+)
 
 
 def main() -> int:
@@ -34,14 +41,14 @@ def main() -> int:
         sys.stderr.write(f"No artifacts directory at {args.artifacts}\n")
         return 1
 
-    per_category = {"model.onnx", "preprocess.json", "metrics.json"}
+    per_category = {"model.onnx", "model.int8.onnx", "preprocess.json", "metrics.json"}
 
     def wanted(p: Path) -> bool:
         if not p.is_file():
             return False
         if p.name in per_category:
             return True
-        return p.parent.name == "benchmark" and p.suffix in {".json", ".md"}
+        return p.parent.name in {"benchmark", "report"} and p.suffix in {".json", ".md"}
 
     uploads = [p for p in args.artifacts.rglob("*") if wanted(p)]
     print(f"{len(uploads)} files -> {args.repo}")

@@ -98,10 +98,11 @@ def _export(args: argparse.Namespace) -> int:
         sys.stderr.write(f"{exc}\n")
         return 1
 
-    results, failures = export_matrix(models, categories, force=args.force)
+    results, failures = export_matrix(models, categories, force=args.force, quantize=args.quantize)
     for r in results:
         mb = r.onnx.stat().st_size / 1e6
-        print(f"{r.model:<14} {r.category:<14} {mb:>7.1f} MB  {r.output_names}")
+        int8 = f" | int8 {r.int8_bytes / 1e6:.1f} MB" if r.int8_bytes else ""
+        print(f"{r.model:<14} {r.category:<14} {mb:>7.1f} MB{int8}  {r.output_names}")
     for model, category, err in failures:
         sys.stderr.write(f"FAILED {model}/{category}: {err}\n")
     return 0 if not failures and results else 1
@@ -171,7 +172,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     data.set_defaults(func=_data)
 
-    train = sub.add_parser("train", help="Train PatchCore / EfficientAD per category.")
+    train = sub.add_parser("train", help="Train PaDiM / PatchCore / EfficientAD per category.")
     train.add_argument(
         "--model",
         choices=["padim", "patchcore", "efficient_ad", "all"],
@@ -204,6 +205,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     export.add_argument("--category", action="append", metavar="NAME")
     export.add_argument("--force", action="store_true")
+    export.add_argument(
+        "--quantize", action="store_true", help="Also emit a dynamic-INT8 model.int8.onnx."
+    )
     export.set_defaults(func=_export)
 
     return parser

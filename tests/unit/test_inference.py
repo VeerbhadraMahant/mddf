@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -139,6 +140,32 @@ def _fake_loaded(model: str, category: str) -> LoadedModel:
         metrics={"image_auroc": 0.99},
         version="test",
     )
+
+
+def test_registry_prefers_int8_when_present(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mddf.inference.registry import _resolve_files
+    from mddf.training import artifacts as art
+
+    cdir = art.category_dir("patchcore", "leather", root=tmp_path)
+    cdir.mkdir(parents=True)
+    (cdir / "model.onnx").write_bytes(b"fp32")
+    (cdir / "model.int8.onnx").write_bytes(b"int8")
+    (cdir / "preprocess.json").write_text("{}")
+    (cdir / "metrics.json").write_text("{}")
+
+    reg = Registry()
+    monkeypatch.setattr(reg._settings, "artifacts_dir", tmp_path)
+    monkeypatch.setattr(reg._settings, "hf_model_repo", "")
+
+    def picked() -> str:
+        return _resolve_files("patchcore", "leather", reg._settings)["model.onnx"].name
+
+    monkeypatch.setattr(reg._settings, "prefer_int8", True)
+    assert picked() == "model.int8.onnx"
+    monkeypatch.setattr(reg._settings, "prefer_int8", False)
+    assert picked() == "model.onnx"
 
 
 def test_registry_lru_eviction(monkeypatch: pytest.MonkeyPatch) -> None:

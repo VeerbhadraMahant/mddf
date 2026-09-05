@@ -25,6 +25,7 @@ from mddf.training.preprocess_spec import PreprocessSpec
 _log = get_logger("mddf.inference.registry")
 
 _FILES = ("model.onnx", "preprocess.json", "metrics.json")
+_INT8_NAME = "model.int8.onnx"
 
 
 class ArtifactsUnavailable(RuntimeError):
@@ -61,23 +62,41 @@ def _hf_fetch(repo: str, revision: str, rel: str, cache_root: Path) -> Path | No
         return None
 
 
-def _resolve_files(model: ModelName, category: str, settings: Settings) -> dict[str, Path]:
-    local_dir = art.category_dir(model, category, root=settings.artifacts_dir)
-    resolved: dict[str, Path] = {}
-    for name in _FILES:
-        local = local_dir / name
-        if local.is_file():
-            resolved[name] = local
-            continue
-        if settings.hf_model_repo:
-            rel = f"{model}/{category}/{name}"
-            fetched = _hf_fetch(
-                settings.hf_model_repo, settings.hf_revision, rel, settings.artifacts_dir
-            )
-            if fetched and fetched.is_file():
-                resolved[name] = fetched
-                continue
+def _resolve_one(
+    model: ModelName, category: str, name: str, settings: Settings, *, required: bool = True
+) -> Path | None:
+    local = art.category_dir(model, category, root=settings.artifacts_dir) / name
+    if local.is_file():
+        return local
+    if settings.hf_model_repo:
+        fetched = _hf_fetch(
+            settings.hf_model_repo,
+            settings.hf_revision,
+            f"{model}/{category}/{name}",
+            settings.artifacts_dir,
+        )
+        if fetched and fetched.is_file():
+            return fetched
+    if required:
         raise ArtifactsUnavailable(f"{model}/{category}: cannot resolve {name}")
+    return None
+
+
+def _resolve_files(model: ModelName, category: str, settings: Settings) -> dict[str, Path]:
+    resolved: dict[str, Path] = {
+        name: p
+        for name in ("preprocess.json", "metrics.json")
+        if (p := _resolve_one(model, category, name, settings)) is not None
+    }
+    onnx: Path | None = None
+    if settings.prefer_int8:
+        onnx = _resolve_one(model, category, _INT8_NAME, settings, required=False)
+        if onnx is not None:
+            _log.info("using_int8", model=model, category=category)
+    if onnx is None:
+        onnx = _resolve_one(model, category, "model.onnx", settings)
+    assert onnx is not None  # _resolve_one(required=True) raises otherwise
+    resolved["model.onnx"] = onnx
     return resolved
 
 

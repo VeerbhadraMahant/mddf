@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     default_model: ModelName = "patchcore"
     input_size: int = 256
     registry_cache_size: int = 4  # model artifact sets kept warm in RAM
+    prefer_int8: bool = True  # use model.int8.onnx when present (smaller, faster on CPU)
 
     # --- Data (training only) ---
     dataset_root: Path = REPO_ROOT / "datasets"

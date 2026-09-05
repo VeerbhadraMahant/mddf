@@ -84,6 +84,16 @@ def benchmark_all(
             spec = PreprocessSpec.model_validate(art.read_json(spec_file))
             h, w = spec.network_input
             stats = measure_onnx(onnx_file, (1, 3, h, w), runs=runs)
+
+            int8_file = onnx_file.with_suffix(".int8.onnx")
+            if int8_file.is_file():
+                q = measure_onnx(int8_file, (1, 3, h, w), runs=runs)
+                stats["latency_ms_p50_int8"] = q["latency_ms_p50"]
+                stats["latency_ms_p95_int8"] = q["latency_ms_p95"]
+                stats["speedup_int8"] = round(
+                    stats["latency_ms_p50"] / max(q["latency_ms_p50"], 1e-6), 2
+                )
+
             results.setdefault(category, {})[model] = stats
             _log.info("latency", model=model, category=category, **stats)
 
