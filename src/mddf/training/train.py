@@ -175,6 +175,14 @@ def build_engine(
         vci = cfg.trainer.get("val_check_interval")
         if isinstance(vci, float) and 0.0 < vci <= 1.0:
             trainer_kw["val_check_interval"] = vci
+        # EfficientAD recomputes map-normalisation quantiles over the whole val set
+        # at every validation; on a laptop GPU that repeatedly stalled the run.
+        # Cap it and validate once per epoch only.
+        trainer_kw["limit_val_batches"] = int(cfg.trainer.get("limit_val_batches", 4))
+        trainer_kw["num_sanity_val_steps"] = 0
+        trainer_kw["check_val_every_n_epoch"] = int(
+            cfg.trainer.get("check_val_every_n_epoch", 2)
+        )
     if "precision" in cfg.trainer:
         trainer_kw["precision"] = cfg.trainer["precision"]
     return Engine(default_root_dir=str(run_dir), logger=False, **trainer_kw)
