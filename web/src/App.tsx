@@ -88,8 +88,9 @@ export function App() {
         {CLIENT_MODE && (
           <p className="mt-2 inline-block rounded-md bg-cyan-950/60 px-2 py-1 text-xs text-cyan-300">
             Static demo — the PaDiM model runs <strong>in your browser</strong> via
-            onnxruntime-web (WASM); the ONNX + metrics are fetched from the Hugging Face model
-            repo. First run per category downloads a ~45&nbsp;MB model.
+            onnxruntime-web (WASM, in a Web Worker); the ONNX + metrics stream from the Hugging
+            Face model repo. First use of a category downloads a ~55&nbsp;MB model, then it&apos;s
+            cached.
           </p>
         )}
         <nav className="mt-4 flex gap-1 rounded-lg bg-gray-900 p-1 text-sm">

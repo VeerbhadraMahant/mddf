@@ -22,6 +22,8 @@ interface PreprocessSpec {
   mean: [number, number, number];
   std: [number, number, number];
   baked_into_onnx: boolean;
+  score_is_normalized?: boolean;
+  decision_threshold?: number;
 }
 
 interface Loaded {
@@ -60,13 +62,12 @@ export function loadClientModel(model: ModelName, category: string): Promise<Loa
       });
       const thresholds = (metricsDoc.thresholds ?? {}) as Record<string, number>;
       const metrics = (metricsDoc.metrics ?? {}) as Record<string, number>;
-      return {
-        session,
-        spec: specDoc,
-        threshold: typeof thresholds.image === "number" ? thresholds.image : 0.5,
-        metrics,
-        version: String(metricsDoc.git_sha ?? "demo"),
-      };
+      // Anomalib's exported PostProcessor normalises the score → boundary is 0.5.
+      const threshold =
+        specDoc.score_is_normalized === false && typeof thresholds.image === "number"
+          ? thresholds.image
+          : (specDoc.decision_threshold ?? 0.5);
+      return { session, spec: specDoc, threshold, metrics, version: String(metricsDoc.git_sha ?? "demo") };
     })();
     cache.set(key, entry);
   }

@@ -22,6 +22,10 @@ class PreprocessSpec(BaseModel):
     std: tuple[float, float, float] = IMAGENET_STD
     # True when the ONNX graph already contains the resize+normalize (Anomalib 2.x).
     baked_into_onnx: bool = True
+    # Anomalib's exported PostProcessor min-max-normalises pred_score so the
+    # decision boundary is 0.5 — not the raw image_threshold captured at training.
+    score_is_normalized: bool = True
+    decision_threshold: float = 0.5
 
     @property
     def network_input(self) -> tuple[int, int]:

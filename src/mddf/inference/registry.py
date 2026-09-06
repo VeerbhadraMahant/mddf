@@ -100,12 +100,14 @@ def _resolve_files(model: ModelName, category: str, settings: Settings) -> dict[
     return resolved
 
 
-def _threshold_from_metrics(metrics_doc: dict[str, object]) -> ThresholdModel:
+def _threshold_from_metrics(metrics_doc: dict[str, object], spec: PreprocessSpec) -> ThresholdModel:
+    # Anomalib's exported PostProcessor normalises pred_score so the boundary is
+    # spec.decision_threshold (0.5), not the raw training threshold.
+    if spec.score_is_normalized:
+        return build_threshold(spec.decision_threshold, ref_scores=(0.0, 1.0))
     thresholds = metrics_doc.get("thresholds") or {}
     raw = metrics_doc.get("raw_metrics") or {}
-    thr = None
-    if isinstance(thresholds, dict):
-        thr = thresholds.get("image")
+    thr = thresholds.get("image") if isinstance(thresholds, dict) else None
     ref = None
     if isinstance(raw, dict):
         lo, hi = raw.get("min_image_score"), raw.get("max_image_score")
@@ -141,7 +143,7 @@ class Registry:
             category=category,
             session=session,
             spec=spec,
-            threshold=_threshold_from_metrics(metrics_doc),
+            threshold=_threshold_from_metrics(metrics_doc, spec),
             metrics=metrics,
             version=version,
         )
