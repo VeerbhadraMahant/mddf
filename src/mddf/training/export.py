@@ -48,8 +48,13 @@ class ExportResult:
 def quantize_int8(fp32_onnx: Path) -> Path:
     """Dynamic INT8 quantization (weights only, no calibration data needed).
 
-    Shrinks the graph ~4x and speeds up CPU matmul-heavy models; accuracy impact
-    is measured by ``mddf benchmark`` / ``mddf report`` re-scoring from the ONNX.
+    Only ``MatMul`` / ``Gemm`` are quantized — deliberately *not* ``Conv``. The
+    big tensors in both models are the per-patch Gaussian params (PaDiM) and the
+    coreset (PatchCore), which live in MatMul, so this still gets most of the size
+    win and the CPU speedup, while leaving the CNN backbone in fp32 so the graph
+    has no ``ConvInteger`` op — which onnxruntime-web's WASM backend cannot run
+    (the static browser demo loads these). Accuracy impact is measured, not
+    assumed (``mddf verify`` / ``mddf report``).
     """
     from onnxruntime.quantization import QuantType, quantize_dynamic
     from onnxruntime.quantization.shape_inference import quant_pre_process
@@ -62,7 +67,12 @@ def quantize_int8(fp32_onnx: Path) -> Path:
             source = prepped
         except Exception:  # pre-process is best-effort
             source = fp32_onnx
-        quantize_dynamic(str(source), str(out), weight_type=QuantType.QInt8)
+        quantize_dynamic(
+            str(source),
+            str(out),
+            weight_type=QuantType.QInt8,
+            op_types_to_quantize=["MatMul", "Gemm"],
+        )
     return out
 
 
@@ -89,7 +99,10 @@ def export_category(
     output_root: Path | None = None,
     force: bool = False,
     quantize: bool = False,
+    requantize: bool = False,
 ) -> ExportResult:
+    """``requantize`` regenerates model.int8.onnx from an existing fp32 export
+    without re-running Anomalib (fast; use after changing the quantization recipe)."""
     cfg = load_model_cfg(model)
     ckpt = art.checkpoint_path(model, category, root=output_root)
     if not ckpt.is_file():
@@ -125,9 +138,9 @@ def export_category(
 
     int8_path: Path | None = None
     int8_bytes: int | None = None
-    if quantize:
+    if quantize or requantize:
         candidate = onnx_dest.with_suffix(".int8.onnx")
-        if candidate.is_file() and not force:
+        if candidate.is_file() and not force and not requantize:
             int8_path = candidate
         else:
             try:
@@ -177,6 +190,7 @@ def export_matrix(
     output_root: Path | None = None,
     force: bool = False,
     quantize: bool = False,
+    requantize: bool = False,
 ) -> tuple[list[ExportResult], list[tuple[str, str, str]]]:
     results: list[ExportResult] = []
     failures: list[tuple[str, str, str]] = []
@@ -190,6 +204,7 @@ def export_matrix(
                         output_root=output_root,
                         force=force,
                         quantize=quantize,
+                        requantize=requantize,
                     )
                 )
             except Exception as exc:
