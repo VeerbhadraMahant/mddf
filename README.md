@@ -24,11 +24,13 @@ Metrics: image + pixel AUROC, **AUPRO** (region-overlap), F1, plus an
 [operating-point analysis](#operating-points) (recall vs. false-alarm trade-off) and
 CPU p50/p95 latency, fp32 and **INT8**.
 
-**Live demo** (GitHub Pages): https://veerbhadramahant.github.io/mddf/ — the PaDiM model
-runs entirely in your browser (onnxruntime-web / WASM); weights + metrics stream from the
-[Hugging Face model repo](https://huggingface.co/bhadra244131/mddf-artifacts). No server.
+**▶ Live demo:** https://bhadra244131-mddf-demo.static.hf.space/ — the PaDiM model runs
+entirely **in your browser** (onnxruntime-web / WASM, in a Web Worker); the ONNX +
+benchmark metrics stream from the
+[Hugging Face model repo](https://huggingface.co/bhadra244131/mddf-artifacts). No server,
+no cold start. (Also builds to GitHub Pages via `pages.yml`.)
 
-**Full service** (all three models, FastAPI + React):
+**Full service** (all three models, FastAPI + React inspection UI):
 `docker run -p 7860:7860 ghcr.io/veerbhadramahant/mddf`
 
 See [`docs/RESULTS.md`](docs/RESULTS.md) for the full measured table and
