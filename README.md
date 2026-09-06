@@ -28,13 +28,17 @@ CPU p50/p95 latency, fp32 and **INT8**.
 entirely **in your browser** (onnxruntime-web / WASM, in a Web Worker); the ONNX +
 benchmark metrics stream from the
 [Hugging Face model repo](https://huggingface.co/bhadra244131/mddf-artifacts). No server,
-no cold start. (Also builds to GitHub Pages via `pages.yml`.)
+no cold start.
 
-**Full service** (all three models, FastAPI + React inspection UI):
-`docker run -p 7860:7860 ghcr.io/veerbhadramahant/mddf`
+![Live demo — leather defect localized in-browser](docs/img/demo-leather.jpg)
 
-See [`docs/RESULTS.md`](docs/RESULTS.md) for the full measured table and
-[`MODEL_CARD.md`](MODEL_CARD.md) for scope and limitations.
+**Full service** (all methods, FastAPI + React inspection UI):
+`docker run -p 7860:7860 ghcr.io/veerbhadramahant/mddf` (image published by `release.yml`
+on each `v*` tag).
+
+See [`docs/RESULTS.md`](docs/RESULTS.md) for the full measured table,
+[`docs/OPERATING_POINTS.md`](docs/OPERATING_POINTS.md) for the recall/false-alarm
+analysis, and [`MODEL_CARD.md`](MODEL_CARD.md) for scope and limitations.
 
 ---
 

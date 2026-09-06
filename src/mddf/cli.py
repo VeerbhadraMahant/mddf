@@ -131,7 +131,16 @@ def _report(args: argparse.Namespace) -> int:
     if not n:
         sys.stderr.write("No exported models found; run `mddf export` first.\n")
         return 1
-    print(f"{n} (model, category) operating-point sets -> artifacts/report/")
+
+    from mddf.config import REPO_ROOT, get_settings
+
+    src = get_settings().artifacts_dir / "report" / "OPERATING_POINTS.md"
+    if src.is_file():
+        (REPO_ROOT / "docs").mkdir(exist_ok=True)
+        (REPO_ROOT / "docs" / "OPERATING_POINTS.md").write_text(
+            src.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+    print(f"{n} (model, category) operating-point sets -> artifacts/report/ + docs/")
     return 0
 
 
