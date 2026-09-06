@@ -165,13 +165,15 @@ make verify ARGS="--tolerance 0.01"    # gate: INT8 image AUROC within 0.01 of f
 make publish-artifacts                 # push INT8 ONNX + JSON to the HF model repo
 ```
 
-Two zero-cost delivery paths (HF Spaces now needs a paid plan for Docker/Gradio, so
-it isn't used):
+Two zero-cost delivery paths (HF *Docker*/Gradio Spaces now need a paid plan, so
+they aren't used):
 
-- **Static demo → GitHub Pages.** `.github/workflows/pages.yml` builds the SPA with
-  `VITE_INFERENCE=client` and deploys it. Inference runs in the browser via
-  onnxruntime-web (WASM, in a Web Worker); the INT8 ONNX + `benchmark/metrics.json`
-  are fetched from the HF model repo. No backend, no cold start.
+- **Static demo → HF static Space.** `web/` built with `VITE_INFERENCE=client` is a
+  pure static bundle; inference runs in the browser via onnxruntime-web (WASM, in a
+  Web Worker) and the INT8 ONNX + `benchmark/metrics.json` are fetched from the HF
+  model repo. Deployed at
+  [`bhadra244131/mddf-demo`](https://huggingface.co/spaces/bhadra244131/mddf-demo).
+  No backend, no cold start. (The same static bundle can go on any static host.)
 - **Container → GHCR.** `.github/workflows/release.yml` builds the two-stage image
   (Node builds `web/dist`; `python:3.12-slim` installs only the Torch-free runtime and
   runs `mddf serve` on 7860) and pushes `ghcr.io/veerbhadramahant/mddf` on a `v*` tag.
