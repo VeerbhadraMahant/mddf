@@ -18,7 +18,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 
-from mddf.api.errors import install_error_handlers
+from mddf.api.errors import ApiError, install_error_handlers
 from mddf.api.middleware import ObservabilityMiddleware
 from mddf.api.routes import health, meta, predict
 from mddf.config import REPO_ROOT, get_settings, project_version
@@ -77,14 +77,6 @@ def create_app() -> FastAPI:
     async def metrics() -> Response:
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-    if SPA_DIR.is_dir():
-        app.mount("/", StaticFiles(directory=SPA_DIR, html=True), name="spa")
-    else:
-
-        @app.get("/", include_in_schema=False)
-        async def root() -> Response:
-            return RedirectResponse(url="/api/docs")
-
     @app.get("/api", include_in_schema=False)
     async def api_index() -> JSONResponse:
         return JSONResponse(
@@ -99,6 +91,24 @@ def create_app() -> FastAPI:
                 ],
             }
         )
+
+    # Catch-all so unknown /api/** paths return problem+json even when the SPA is
+    # mounted at "/" (StaticFiles would otherwise serve its own plain 404).
+    @app.api_route(
+        "/api/{rest:path}",
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        include_in_schema=False,
+    )
+    async def api_not_found(rest: str) -> Response:
+        raise ApiError(status_code=404, slug="not-found", detail=f"No API route /api/{rest}")
+
+    if SPA_DIR.is_dir():
+        app.mount("/", StaticFiles(directory=SPA_DIR, html=True), name="spa")
+    else:
+
+        @app.get("/", include_in_schema=False)
+        async def root() -> Response:
+            return RedirectResponse(url="/api/docs")
 
     return app
 

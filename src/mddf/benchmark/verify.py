@@ -34,6 +34,7 @@ def verify_int8_parity(
     tolerance: float = DEFAULT_TOLERANCE,
     root: Path | None = None,
     dataset_root: Path | None = None,
+    sample: int | None = None,
     write: bool = True,
 ) -> dict[str, Any]:
     mods = models or list(ALL_MODELS)
@@ -52,8 +53,8 @@ def verify_int8_parity(
             if not (fp32.is_file() and int8.is_file() and spec_file.is_file()):
                 continue
             spec = PreprocessSpec.model_validate(art.read_json(spec_file))
-            s_fp32, labels = _score_test_split(fp32, spec, cdir)
-            s_int8, _ = _score_test_split(int8, spec, cdir)
+            s_fp32, labels = _score_test_split(fp32, spec, cdir, sample=sample)
+            s_int8, _ = _score_test_split(int8, spec, cdir, sample=sample)
             a32 = auroc(s_fp32, labels)
             a8 = auroc(s_int8, labels)
             delta = a8 - a32

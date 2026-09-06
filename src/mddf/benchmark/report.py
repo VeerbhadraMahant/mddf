@@ -30,23 +30,50 @@ _log = get_logger("mddf.benchmark.report")
 _IMG_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp"}
 
 
-def _score_test_split(
-    onnx_file: Path, spec: PreprocessSpec, category_dir: Path
-) -> tuple[np.ndarray, np.ndarray]:
-    session = OnnxModel(onnx_file, threads=1)
-    scores: list[float] = []
-    labels: list[int] = []
+def _test_images(category_dir: Path) -> list[tuple[Path, int]]:
+    items: list[tuple[Path, int]] = []
     for sub in sorted((category_dir / "test").iterdir()):
         if not sub.is_dir():
             continue
         is_defect = 0 if sub.name == "good" else 1
         for img in sorted(sub.iterdir()):
-            if img.suffix.lower() not in _IMG_SUFFIXES:
-                continue
-            decoded = preprocess(img.read_bytes(), spec)
-            raw = parse_outputs(session.run(decoded.tensor))
-            scores.append(raw.score)
-            labels.append(is_defect)
+            if img.suffix.lower() in _IMG_SUFFIXES:
+                items.append((img, is_defect))
+    return items
+
+
+def _score_test_split(
+    onnx_file: Path,
+    spec: PreprocessSpec,
+    category_dir: Path,
+    *,
+    sample: int | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Score the test split. ``sample`` caps images per class (stratified) — the big
+    PatchCore ONNX graphs make a full sweep hours long on CPU."""
+    session = OnnxModel(onnx_file, threads=1)
+    items = _test_images(category_dir)
+    if sample is not None:
+        rng = np.random.default_rng(0)
+        by_class: dict[int, list[Path]] = {0: [], 1: []}
+        for p, y in items:
+            by_class[y].append(p)
+        items = []
+        for y, paths in by_class.items():
+            chosen = (
+                paths
+                if len(paths) <= sample
+                else list(rng.choice(np.array(paths, dtype=object), size=sample, replace=False))
+            )
+            items.extend((p, y) for p in chosen)
+
+    scores: list[float] = []
+    labels: list[int] = []
+    for img, is_defect in items:
+        decoded = preprocess(img.read_bytes(), spec)
+        raw = parse_outputs(session.run(decoded.tensor))
+        scores.append(raw.score)
+        labels.append(is_defect)
     return np.asarray(scores), np.asarray(labels)
 
 
@@ -56,6 +83,7 @@ def build_report(
     *,
     root: Path | None = None,
     dataset_root: Path | None = None,
+    sample: int | None = None,
     write: bool = True,
 ) -> dict[str, Any]:
     mods = models or list(ALL_MODELS)
@@ -73,7 +101,7 @@ def build_report(
             if not onnx_file.is_file() or not spec_file.is_file():
                 continue
             spec = PreprocessSpec.model_validate(art.read_json(spec_file))
-            scores, labels = _score_test_split(onnx_file, spec, cdir)
+            scores, labels = _score_test_split(onnx_file, spec, cdir, sample=sample)
             pts = operating_points(scores, labels)
             results.setdefault(category, {})[model] = {
                 "n_good": int((labels == 0).sum()),

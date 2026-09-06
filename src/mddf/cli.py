@@ -126,7 +126,7 @@ def _report(args: argparse.Namespace) -> int:
     except ValueError as exc:
         sys.stderr.write(f"{exc}\n")
         return 1
-    doc = build_report(categories=categories)
+    doc = build_report(categories=categories, sample=args.sample)
     n = sum(len(v) for v in doc["results"].values())
     if not n:
         sys.stderr.write("No exported models found; run `mddf export` first.\n")
@@ -140,7 +140,7 @@ def _verify(args: argparse.Namespace) -> int:
     from mddf.logging import configure_logging
 
     configure_logging(level="INFO", json=False)
-    doc = verify_int8_parity(tolerance=args.tolerance)
+    doc = verify_int8_parity(tolerance=args.tolerance, sample=args.sample)
     for r in doc["rows"]:
         flag = "ok" if r["within_tolerance"] else "FAIL"
         print(
@@ -236,10 +236,12 @@ def build_parser() -> argparse.ArgumentParser:
         "report", help="Operating-point analysis (recall / false-alarm trade-off) from ONNX."
     )
     report.add_argument("--category", action="append", metavar="NAME")
+    report.add_argument("--sample", type=int, default=None, help="Images per class per category.")
     report.set_defaults(func=_report)
 
     verify = sub.add_parser("verify", help="Gate: INT8 export must match fp32 AUROC within tol.")
     verify.add_argument("--tolerance", type=float, default=0.01)
+    verify.add_argument("--sample", type=int, default=None, help="Images per class per category.")
     verify.set_defaults(func=_verify)
 
     export = sub.add_parser("export", help="Export ONNX artifacts for the trained models.")
