@@ -3,14 +3,13 @@
 ## Overview
 
 Per-category unsupervised anomaly detectors for the 15 [MVTec AD](https://www.mvtec.com/company/research/datasets/mvtec-ad)
-object/texture categories. One model is trained per `(method, category)` pair for
-three methods:
+object/texture categories. One model is trained per `(method, category)` pair.
 
-| Method | Paradigm | Backbone | Train time (RTX 4060) |
-|---|---|---|---|
-| PaDiM | per-patch multivariate Gaussian | ResNet-18 | ~30 s / category |
-| PatchCore | coreset memory bank (10 %) | WideResNet-50 | ~1.5 min / category |
-| EfficientAD-S | student–teacher + autoencoder | custom PDN | step-budgeted (~24k steps) |
+| Method | Paradigm | Backbone | Train time (RTX 4060) | Status |
+|---|---|---|---|---|
+| PaDiM | per-patch multivariate Gaussian | ResNet-18 | ~30 s / category | trained, 15/15 |
+| PatchCore | coreset memory bank (10 %) | WideResNet-50 | ~1.5 min / category | trained, 15/15 |
+| EfficientAD-S | student–teacher + autoencoder | custom PDN | step-budgeted | pipeline verified on 1 category; full run pending non-laptop GPU |
 
 Implementation: [Anomalib](https://github.com/open-edge-platform/anomalib) 2.6.
 

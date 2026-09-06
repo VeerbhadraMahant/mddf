@@ -10,15 +10,15 @@ dataset. Models are trained **only on defect-free images** — the realistic set
 factory line, where defects are rare and their appearance is open-ended — and served
 **CPU-only** (no PyTorch at runtime) behind a FastAPI service with a React inspection UI.
 
-**A 3-method comparative study**, one model trained per category per method:
+**A method comparison**, one model trained per category per method:
 
-| Method | Paradigm | Backbone | Idea |
-|---|---|---|---|
-| **PaDiM** | distribution | ResNet-18 | per-patch multivariate Gaussian of normal features; anomaly = Mahalanobis distance |
-| **PatchCore** | memory bank | WideResNet-50 | coreset of normal patch embeddings; anomaly = distance to nearest normal patch |
-| **EfficientAD** | distillation | custom PDN | student–teacher + autoencoder disagreement; built for real-time edge inference |
+| Method | Paradigm | Backbone | Idea | Status |
+|---|---|---|---|---|
+| **PaDiM** | distribution | ResNet-18 | per-patch multivariate Gaussian of normal features; anomaly = Mahalanobis distance | ✅ 15/15 trained |
+| **PatchCore** | memory bank | WideResNet-50 | coreset of normal patch embeddings; anomaly = distance to nearest normal patch | ✅ 15/15 trained |
+| **EfficientAD** | distillation | custom PDN | student–teacher + autoencoder disagreement; real-time edge inference | pipeline done, single-category verified (AUROC 1.0); full run pending non-laptop GPU |
 
-All three emit a **native pixel-level anomaly map**, upsampled and overlaid on the input
+Each emits a **native pixel-level anomaly map**, upsampled and overlaid on the input
 for operator-facing localization — no Grad-CAM (see [Design notes](#design-notes)).
 Metrics: image + pixel AUROC, **AUPRO** (region-overlap), F1, plus an
 [operating-point analysis](#operating-points) (recall vs. false-alarm trade-off) and
@@ -105,10 +105,11 @@ precision, **false-alarm rate** (good parts wrongly rejected) and **miss rate**
 - **Weights out of the image.** `model.onnx` + JSON per category live in a Hugging Face
   *model* repo and are pulled lazily on first request, then disk- and LRU-cached in RAM
   (`MDDF_REGISTRY_CACHE_SIZE`, default 4). Cold start touches one category, not fifteen.
-- **Three methods, one benchmark.** PaDiM (distribution), PatchCore (memory bank),
-  EfficientAD (distillation) — `mddf benchmark` reports measured image AUROC against the
-  published PatchCore baseline plus pixel AUROC, AUPRO, F1 and p50/p95 CPU latency
-  (fp32 and INT8), regenerating `docs/RESULTS.md`.
+- **Method comparison, one benchmark.** `mddf benchmark` reports measured image AUROC
+  against the published PatchCore baseline plus pixel AUROC, AUPRO, F1 and p50/p95 CPU
+  latency (fp32 and INT8) for whatever is trained, regenerating `docs/RESULTS.md`.
+  PaDiM + PatchCore are trained across all 15 categories; EfficientAD's pipeline is in
+  place (`--model efficient_ad`) but a full run needs a non-laptop GPU.
 - **INT8 without calibration data.** `mddf export --quantize` runs ONNXRuntime
   dynamic quantization; the service loads the INT8 graph when present
   (`MDDF_PREFER_INT8`), and the accuracy delta is measured by re-scoring, not assumed.
