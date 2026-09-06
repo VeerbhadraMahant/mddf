@@ -36,9 +36,24 @@ no cold start.
 `docker run -p 7860:7860 ghcr.io/veerbhadramahant/mddf` (image published by `release.yml`
 on each `v*` tag).
 
-See [`docs/RESULTS.md`](docs/RESULTS.md) for the full measured table,
-[`docs/OPERATING_POINTS.md`](docs/OPERATING_POINTS.md) for the recall/false-alarm
-analysis, and [`MODEL_CARD.md`](MODEL_CARD.md) for scope and limitations.
+### Results (15 MVTec AD categories, measured)
+
+| Method | image AUROC (mean) | pixel AUROC | AUPRO | CPU p50 · 1 thread | INT8 p50 |
+|---|---:|---:|---:|---:|---:|
+| **PaDiM** (ResNet-18) | 0.892 &nbsp;(min 0.77) | 0.964 | 0.895 | **55 ms** | 51 ms |
+| **PatchCore** (WideResNet-50) | **0.988** &nbsp;(min 0.95, 7/15 ≥ 0.99) | 0.977 | 0.911 | 506 ms | **276 ms** (1.8×) |
+
+PatchCore lands within ~1 pt of the published PatchCore baseline on almost every
+category (understating the original bullet's "94%+"). The comparison's point:
+**PatchCore buys ≈ +0.10 mean image AUROC over PaDiM for ~9× the CPU latency**;
+PaDiM holds up on textures (leather / carpet / wood ≥ 0.98) but drops on hard
+objects (grid, zipper, screw ≈ 0.77–0.79). Dynamic **INT8** gives PatchCore a
+1.8× CPU speedup with **zero AUROC change** — a parity gate (`mddf verify`) checks
+every pair and passed 30/30 (`docs/INT8_PARITY.md`).
+
+Full per-category table: [`docs/RESULTS.md`](docs/RESULTS.md) ·
+recall / false-alarm trade-off: [`docs/OPERATING_POINTS.md`](docs/OPERATING_POINTS.md) ·
+scope & limits: [`MODEL_CARD.md`](MODEL_CARD.md).
 
 ---
 

@@ -34,6 +34,15 @@ and an operating-point analysis (threshold / precision / false-alarm rate /
 miss rate at target recalls). Baseline for comparison: the image AUROC reported
 in the PatchCore paper (Roth et al., 2022). See `docs/RESULTS.md`.
 
+Measured means over 15 categories: PatchCore image AUROC **0.988** (pixel 0.977,
+AUPRO 0.911), PaDiM **0.892** (pixel 0.964, AUPRO 0.895). Single-thread CPU p50
+latency: PaDiM ~55 ms, PatchCore ~506 ms (INT8 ~276 ms).
+
+The INT8 parity check (`docs/INT8_PARITY.md`) re-scores a **stratified 25
+images/class/category sample** through each fp32 / INT8 pair; the AUROC values
+there are sample estimates (higher variance than the full-split numbers above)
+and are only compared fp32-vs-INT8, where they agree within 0.03 for all 30 pairs.
+
 ## Serving
 
 Exported to ONNX (opset 17), optionally dynamic-INT8 quantized. Inference is
